@@ -47,7 +47,7 @@ Alpine.data('teamflowApp', () => ({
 
         // Global presence channel
         window.Echo.join('app')
-            .listen('.UserPresenceUpdated', e => {
+            .listen('UserPresenceUpdated', e => {
                 document.querySelectorAll(`[data-user-id="${e.user_id}"]`).forEach(el => {
                     const dot = el.querySelector('.status-dot');
                     if (dot) dot.className = dot.className.replace(/(bg-green-500|bg-gray-400)/, e.is_online ? 'bg-green-500' : 'bg-gray-400');
@@ -58,8 +58,8 @@ Alpine.data('teamflowApp', () => ({
         const userId = document.body.dataset?.userId;
         if (userId) {
             window.Echo.private(`user.${userId}`)
-                .listen('.CallInitiated', e => { this.incomingCall = e; })
-                .listen('.ExportReady', e => {
+                .listen('CallInitiated', e => { this.incomingCall = e; })
+                .listen('ExportReady', e => {
                     this.addToast('success', 'Export ready! Downloading...');
                     setTimeout(() => { window.location.href = e.download_url; }, 800);
                 });
@@ -169,29 +169,29 @@ Alpine.data('chatConversation', (conversationId, currentUserId, initialMessages)
         if (!window.Echo) return;
 
         window.Echo.private(`conversation.${conversationId}`)
-            .listen('.MessageSent', e => {
+            .listen('MessageSent', e => {
                 if (!this.messages.find(m => m.id === e.message.id)) {
                     this.messages.push({ ...e.message, link_previews: [] });
                     this.$nextTick(() => this.scrollToBottom());
                     if (e.message.user_id !== currentUserId) this.markRead();
                 }
             })
-            .listen('.MessageUpdated', e => {
+            .listen('MessageUpdated', e => {
                 const m = this.messages.find(m => m.id === e.message.id);
                 if (m) { m.body = e.message.body; m.is_edited = true; }
             })
-            .listen('.MessageDeleted', e => {
+            .listen('MessageDeleted', e => {
                 this.messages = this.messages.filter(m => m.id !== e.message_id);
             })
-            .listen('.ReactionToggled', e => {
+            .listen('ReactionToggled', e => {
                 const m = this.messages.find(m => m.id === e.message_id);
                 if (m) m.reactions = e.reactions;
             })
-            .listen('.PollUpdated', e => {
+            .listen('PollUpdated', e => {
                 const m = this.messages.find(m => m.id === e.message_id);
                 if (m?.poll) { m.poll.total_votes = e.total_votes; m.poll.options = e.options; }
             })
-            .listen('.LinkPreviewReady', e => {
+            .listen('LinkPreviewReady', e => {
                 const m = this.messages.find(m => m.id === e.message_id);
                 if (m) {
                     if (!m.link_previews) m.link_previews = [];
@@ -199,7 +199,7 @@ Alpine.data('chatConversation', (conversationId, currentUserId, initialMessages)
                 }
             })
             .listenForWhisper('typing', e => {
-                if (e.user_id === currentUserId) return;
+                if (String(e.user_id) === String(currentUserId)) return;
                 if (!this.typingUsers.includes(e.name)) this.typingUsers.push(e.name);
                 clearTimeout(this._typingClear);
                 this._typingClear = setTimeout(() => {

@@ -11,4 +11,5 @@ window.Echo = new Echo({
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
     enabledTransports: ['ws', 'wss'],
     disableStats: true,
+    namespace: 'App.Events',
 });
