@@ -195,15 +195,18 @@
 
                         {{-- Normal message --}}
                         <template x-if="message.type !== 'system'">
-                            <div class="flex gap-2.5"
-                                 :class="message.user_id == currentUserId ? 'flex-row-reverse' : 'flex-row'">
+                            <div class="flex gap-2.5 w-full"
+                                 :class="message.user_id == currentUserId ? 'justify-end' : 'justify-start'">
 
-                                {{-- Avatar for received --}}
-                                <div class="flex-shrink-0 self-end w-8">
-                                    <img x-show="message.user_id != currentUserId && !isSameUserAsPrev(index)"
-                                         :src="message.user?.avatar_url" :alt="message.user?.name"
-                                         class="w-8 h-8 rounded-full object-cover">
-                                </div>
+                                {{-- Avatar for received only --}}
+                                <template x-if="message.user_id != currentUserId">
+                                    <div class="flex-shrink-0 self-end w-8">
+                                        <img x-show="!isSameUserAsPrev(index)"
+                                             :src="message.user?.avatar_url" :alt="message.user?.name"
+                                             class="w-8 h-8 rounded-full object-cover">
+                                        <div x-show="isSameUserAsPrev(index)" class="w-8"></div>
+                                    </div>
+                                </template>
 
                                 {{-- Bubble column --}}
                                 <div class="flex flex-col max-w-[68%]"
@@ -362,137 +365,6 @@
                 </template>
             </div>
         </template>
-
-                                    {{-- Name + time (only first in group, received only) --}}
-                                    <div class="flex items-baseline gap-2 mb-1 px-1"
-                                         x-show="!isSameUserAsPrev(index) && message.user_id != currentUserId">
-                                        <span class="font-semibold text-xs text-gray-700" x-text="message.user?.name"></span>
-                                        <span x-show="message.user?.is_guest"
-                                              class="text-xs bg-yellow-100 text-yellow-700 px-1.5 rounded font-medium">Guest</span>
-                                        <span class="text-xs text-gray-400" x-text="formatTime(message.created_at)"></span>
-                                        <span x-show="message.is_edited" class="text-xs text-gray-400 italic">(edited)</span>
-                                    </div>
-
-                                    {{-- Forwarded label --}}
-                                    <div x-show="message.type === 'forwarded'" class="flex items-center gap-1 text-xs text-gray-400 mb-1 px-1">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-                                        </svg>
-                                        Forwarded
-                                    </div>
-
-                                    {{-- Reply reference --}}
-                                    <div x-show="message.parent"
-                                         class="border-l-2 border-emerald-400/60 pl-2 mb-1.5 text-xs text-gray-500 bg-white/80 rounded-r-lg py-1 pr-2">
-                                        <span class="font-semibold text-emerald-600" x-text="message.parent?.user?.name"></span>:
-                                        <span class="text-gray-500" x-text="(message.parent?.body || '').slice(0, 80)"></span>
-                                    </div>
-
-                                    {{-- Bubble --}}
-                                    <div :class="message.user_id == currentUserId
-                                            ? 'text-white rounded-2xl rounded-tr-sm'
-                                            : 'bg-white dark:bg-gray-700 border border-slate-100 dark:border-gray-600 rounded-2xl rounded-tl-sm shadow-sm text-gray-800 dark:text-gray-100'"
-                                         :style="message.user_id == currentUserId ? 'background:#10b981;' : ''"
-                                         class="px-4 py-2.5 relative">
-
-                                        <p x-show="!editingMessageId || editingMessageId !== message.id"
-                                           class="text-sm leading-relaxed whitespace-pre-wrap break-words"
-                                           x-text="message.body"></p>
-
-                                        {{-- Edit input --}}
-                                        <div x-show="editingMessageId === message.id" class="flex gap-2">
-                                            <input type="text" x-model="editBody"
-                                                   class="flex-1 border border-emerald-300/60 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 bg-white"
-                                                   @keydown.enter="saveEdit(message)"
-                                                   @keydown.escape="editingMessageId = null">
-                                            <button @click="saveEdit(message)"
-                                                    class="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg transition-colors">Save</button>
-                                            <button @click="editingMessageId = null"
-                                                    class="text-xs text-gray-400 hover:text-gray-600 px-2 transition-colors">Cancel</button>
-                                        </div>
-
-                                        {{-- Attachments --}}
-                                        <template x-for="att in (message.attachments || [])" :key="att.id">
-                                            <div class="mt-2">
-                                                <template x-if="att.file_type && att.file_type.startsWith('image/')">
-                                                    <a :href="att.url" target="_blank">
-                                                        <img :src="att.thumbnail_path ? '/storage/' + att.thumbnail_path : att.url"
-                                                             class="max-w-xs max-h-48 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity">
-                                                    </a>
-                                                </template>
-                                                <template x-if="!att.file_type || !att.file_type.startsWith('image/')">
-                                                    <a :href="att.url" target="_blank"
-                                                       class="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 max-w-xs hover:bg-slate-100 transition-colors">
-                                                        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                                        </svg>
-                                                        <div class="min-w-0">
-                                                            <p class="text-sm font-medium text-gray-800 truncate" x-text="att.original_name"></p>
-                                                            <p class="text-xs text-gray-400" x-text="att.formatted_size"></p>
-                                                        </div>
-                                                    </a>
-                                                </template>
-                                            </div>
-                                        </template>
-
-                                        {{-- Link previews --}}
-                                        <template x-for="preview in (message.link_previews || [])" :key="preview.url">
-                                            <a :href="preview.url" target="_blank" rel="noopener"
-                                               class="mt-2 flex gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3 hover:bg-slate-100 transition-colors max-w-sm">
-                                                <img x-show="preview.image" :src="preview.image"
-                                                     class="w-14 h-14 rounded-lg object-cover flex-shrink-0">
-                                                <div class="min-w-0">
-                                                    <p class="font-semibold text-sm text-gray-900 truncate" x-text="preview.title"></p>
-                                                    <p class="text-xs text-gray-500 line-clamp-2 mt-0.5" x-text="preview.description"></p>
-                                                    <p class="text-xs text-emerald-600 mt-1" x-text="preview.site_name"></p>
-                                                </div>
-                                            </a>
-                                        </template>
-
-                                        {{-- Poll --}}
-                                        <template x-if="message.type === 'poll' && message.poll">
-                                            <div x-data="pollWidget(message.poll.id, message.poll)"
-                                                 class="mt-2 bg-slate-50 border border-slate-100 rounded-xl p-4 max-w-sm">
-                                                <p class="font-semibold text-sm text-gray-900 mb-3" x-text="poll.question"></p>
-                                                <template x-for="option in poll.options" :key="option.id">
-                                                    <button @click="!poll.is_closed && vote(option.id)"
-                                                            class="w-full mb-2 relative overflow-hidden rounded-xl border border-slate-200 text-left px-3 py-2 hover:border-emerald-300 transition-colors">
-                                                        <div class="absolute inset-0 bg-emerald-500/10 transition-all" :style="`width: ${percentage(option)}%`"></div>
-                                                        <div class="relative flex items-center justify-between">
-                                                            <span class="text-sm text-gray-800" x-text="option.text"></span>
-                                                            <span class="text-xs text-gray-500 font-medium" x-text="percentage(option) + '%'"></span>
-                                                        </div>
-                                                    </button>
-                                                </template>
-                                                <p class="text-xs text-gray-400 mt-2" x-text="poll.total_votes + ' vote(s)'"></p>
-                                            </div>
-                                        </template>
-                                    </div>
-
-                                    {{-- Timestamp for sent messages --}}
-                                    <div x-show="message.user_id == currentUserId && !isSameUserAsPrev(index)"
-                                         class="flex items-center gap-1 mt-0.5 px-1">
-                                        <span class="text-xs text-gray-400" x-text="formatTime(message.created_at)"></span>
-                                        <span x-show="message.is_edited" class="text-xs text-gray-400 italic">(edited)</span>
-                                    </div>
-
-                                    {{-- Reactions --}}
-                                    <div x-show="(message.reactions || []).length > 0" class="flex flex-wrap gap-1 mt-1.5 px-1">
-                                        <template x-for="reaction in (message.reactions || [])" :key="reaction.emoji">
-                                            <button @click="toggleReaction(message, reaction.emoji)"
-                                                    class="flex items-center gap-1 bg-white border border-slate-100 hover:border-emerald-200 rounded-full px-2 py-0.5 text-xs transition-colors shadow-sm"
-                                                    :title="(reaction.users || []).join(', ')">
-                                                <span x-text="reaction.emoji"></span>
-                                                <span class="text-gray-600" x-text="reaction.count"></span>
-                                            </button>
-                                        </template>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-
-                    </div>
-                </template>
 
                 {{-- Typing indicator --}}
                 <div x-show="typingUsers.length > 0" class="flex items-center gap-2 px-4 pb-2 pt-1">
