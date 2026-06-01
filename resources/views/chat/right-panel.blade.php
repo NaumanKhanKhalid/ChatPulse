@@ -5,7 +5,7 @@
     $isAdmin = $conversation->isGroup() && $participant?->role === 'admin';
 @endphp
 
-<div class="flex flex-col h-full bg-white" style="font-family: 'Inter', sans-serif;">
+<div class="flex flex-col h-full bg-white dark:bg-gray-800" style="font-family: 'Inter', sans-serif;">
 
     {{-- Header: avatar + name + status --}}
     <div class="px-4 pt-6 pb-4 border-b border-slate-100 text-center flex-shrink-0">
