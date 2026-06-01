@@ -7,7 +7,7 @@
     <title>{{ config('app.name') }} - @yield('title', 'Chat')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900" x-data="teamflowApp()">
+<body class="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900" x-data="teamflowApp()" data-user-id="{{ auth()->id() }}" data-user-name="{{ auth()->user()?->name }}">
 
     {{-- Toast container --}}
     <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">

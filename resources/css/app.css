@@ -1,28 +1,77 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
 
 @layer base {
-    html { font-family: 'Inter', sans-serif; }
-    body { @apply bg-white text-gray-900; }
+    html {
+        font-family: 'Inter', sans-serif;
+    }
+    body {
+        background-color: white;
+        color: rgb(17 24 39);
+    }
 }
 
 @layer components {
     .btn-primary {
-        @apply bg-primary hover:bg-primary-hover text-white font-medium px-4 py-2 rounded-lg transition-colors duration-150;
+        background-color: var(--color-primary, #6366f1);
+        color: white;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        transition: background-color 0.15s;
+    }
+    .btn-primary:hover {
+        background-color: var(--color-primary-hover, #4f46e5);
     }
     .btn-secondary {
-        @apply bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors duration-150;
+        background-color: rgb(243 244 246);
+        color: rgb(55 65 81);
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        transition: background-color 0.15s;
+    }
+    .btn-secondary:hover {
+        background-color: rgb(229 231 235);
     }
     .input-field {
-        @apply w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors;
+        width: 100%;
+        border: 1px solid rgb(229 231 235);
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .input-field:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgb(99 102 241 / 0.3);
+        border-color: rgb(99 102 241);
     }
     .toast {
-        @apply fixed bottom-4 right-4 z-50 flex flex-col gap-2;
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
     }
     .message-hover-actions {
-        @apply invisible group-hover:visible absolute right-2 -top-3 bg-white border border-gray-100 rounded-lg shadow-md flex items-center gap-1 px-2 py-1 z-10;
+        visibility: hidden;
+        position: absolute;
+        right: 0.5rem;
+        top: -0.75rem;
+        background-color: white;
+        border: 1px solid rgb(243 244 246);
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        z-index: 10;
+    }
+    .group:hover .message-hover-actions {
+        visibility: visible;
     }
 }

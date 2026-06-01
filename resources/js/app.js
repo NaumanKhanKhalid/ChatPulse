@@ -1,1 +1,398 @@
-//
+import './echo.js';
+import Alpine from 'alpinejs';
+import persist from '@alpinejs/persist';
+
+Alpine.plugin(persist);
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+window.csrfToken = csrfToken;
+
+const apiFetch = async (url, options = {}) => {
+    const headers = {
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': csrfToken(),
+        ...(options.headers ?? {}),
+    };
+    if (!(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+    }
+    const res = await fetch(url, { ...options, headers });
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || body.error || `HTTP ${res.status}`);
+    }
+    return res.json().catch(() => null);
+};
+window.apiFetch = apiFetch;
+
+// ─── Root App Component ──────────────────────────────────────────────────────
+
+Alpine.data('teamflowApp', () => ({
+    darkMode: localStorage.getItem('darkMode') === 'true',
+    toasts: [],
+    _toastId: 0,
+    incomingCall: null,
+    activeCall: null,
+    localStream: null,
+    isMuted: false,
+    isCameraOff: false,
+
+    init() {
+        document.documentElement.classList.toggle('dark', this.darkMode);
+        this.startHeartbeat();
+
+        if (!window.Echo) return;
+
+        // Global presence channel
+        window.Echo.join('app')
+            .listen('.UserPresenceUpdated', e => {
+                document.querySelectorAll(`[data-user-id="${e.user_id}"]`).forEach(el => {
+                    const dot = el.querySelector('.status-dot');
+                    if (dot) dot.className = dot.className.replace(/(bg-green-500|bg-gray-400)/, e.is_online ? 'bg-green-500' : 'bg-gray-400');
+                });
+            });
+
+        // Private user channel (calls + exports)
+        const userId = document.body.dataset?.userId;
+        if (userId) {
+            window.Echo.private(`user.${userId}`)
+                .listen('.CallInitiated', e => { this.incomingCall = e; })
+                .listen('.ExportReady', e => {
+                    this.addToast('success', 'Export ready! Downloading...');
+                    setTimeout(() => { window.location.href = e.download_url; }, 800);
+                });
+        }
+    },
+
+    toggleDark() {
+        this.darkMode = !this.darkMode;
+        localStorage.setItem('darkMode', String(this.darkMode));
+        document.documentElement.classList.toggle('dark', this.darkMode);
+        fetch('/settings/dark-mode', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+            body: JSON.stringify({}),
+        }).catch(() => {});
+    },
+
+    startHeartbeat() {
+        const ping = () => fetch('/presence/heartbeat', { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken() } }).catch(() => {});
+        ping();
+        setInterval(ping, 30000);
+    },
+
+    addToast(type, message) {
+        const id = ++this._toastId;
+        this.toasts.push({ id, type, message, visible: true });
+        setTimeout(() => this.removeToast(id), 4000);
+    },
+
+    removeToast(id) {
+        const t = this.toasts.find(t => t.id === id);
+        if (t) t.visible = false;
+        setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 300);
+    },
+
+    async acceptCall() {
+        const call = this.incomingCall;
+        if (!call) return;
+        this.incomingCall = null;
+        try {
+            await apiFetch(`/calls/${call.call_id}/answer`, { method: 'POST' });
+            this.activeCall = call;
+            await this._setupMedia(call.type !== 'audio');
+        } catch (e) { this.addToast('error', 'Could not join call.'); }
+    },
+
+    declineCall() {
+        if (!this.incomingCall) return;
+        apiFetch(`/calls/${this.incomingCall.call_id}/decline`, { method: 'POST' }).catch(() => {});
+        this.incomingCall = null;
+    },
+
+    async _setupMedia(video = true) {
+        try {
+            this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video });
+            const lv = document.querySelector('[x-ref="localVideo"]');
+            if (lv) lv.srcObject = this.localStream;
+        } catch { this.addToast('error', 'Camera/microphone access denied.'); }
+    },
+
+    toggleMic() {
+        this.isMuted = !this.isMuted;
+        this.localStream?.getAudioTracks().forEach(t => { t.enabled = !this.isMuted; });
+    },
+
+    toggleCamera() {
+        this.isCameraOff = !this.isCameraOff;
+        this.localStream?.getVideoTracks().forEach(t => { t.enabled = !this.isCameraOff; });
+    },
+
+    endCall() {
+        if (this.activeCall) apiFetch(`/calls/${this.activeCall.call_id}/end`, { method: 'POST' }).catch(() => {});
+        this.localStream?.getTracks().forEach(t => t.stop());
+        this.localStream = null;
+        this.activeCall = null;
+        this.isMuted = false;
+        this.isCameraOff = false;
+    },
+}));
+
+// ─── Chat Conversation Component ─────────────────────────────────────────────
+
+Alpine.data('chatConversation', (conversationId, currentUserId, initialMessages) => ({
+    messages: Array.isArray(initialMessages) ? initialMessages : [],
+    newMessage: '',
+    typingUsers: [],
+    _typingTimeout: null,
+    _typingClear: null,
+    replyTo: null,
+    editingMessageId: null,
+    editBody: '',
+    selectedFiles: [],
+    scheduledAt: null,
+    forwardModalOpen: false,
+    forwardingMessage: null,
+    forwardTargets: [],
+    showExportModal: false,
+    exportFormat: 'csv',
+    exportFrom: '',
+    exportTo: '',
+
+    init() {
+        this.$nextTick(() => this.scrollToBottom());
+        this.markRead();
+
+        if (!window.Echo) return;
+
+        window.Echo.private(`conversation.${conversationId}`)
+            .listen('.MessageSent', e => {
+                if (!this.messages.find(m => m.id === e.message.id)) {
+                    this.messages.push({ ...e.message, link_previews: [] });
+                    this.$nextTick(() => this.scrollToBottom());
+                    if (e.message.user_id !== currentUserId) this.markRead();
+                }
+            })
+            .listen('.MessageUpdated', e => {
+                const m = this.messages.find(m => m.id === e.message.id);
+                if (m) { m.body = e.message.body; m.is_edited = true; }
+            })
+            .listen('.MessageDeleted', e => {
+                this.messages = this.messages.filter(m => m.id !== e.message_id);
+            })
+            .listen('.ReactionToggled', e => {
+                const m = this.messages.find(m => m.id === e.message_id);
+                if (m) m.reactions = e.reactions;
+            })
+            .listen('.PollUpdated', e => {
+                const m = this.messages.find(m => m.id === e.message_id);
+                if (m?.poll) { m.poll.total_votes = e.total_votes; m.poll.options = e.options; }
+            })
+            .listen('.LinkPreviewReady', e => {
+                const m = this.messages.find(m => m.id === e.message_id);
+                if (m) {
+                    if (!m.link_previews) m.link_previews = [];
+                    if (!m.link_previews.find(p => p.url === e.preview.url)) m.link_previews.push(e.preview);
+                }
+            })
+            .listenForWhisper('typing', e => {
+                if (e.user_id === currentUserId) return;
+                if (!this.typingUsers.includes(e.name)) this.typingUsers.push(e.name);
+                clearTimeout(this._typingClear);
+                this._typingClear = setTimeout(() => {
+                    this.typingUsers = this.typingUsers.filter(n => n !== e.name);
+                }, 3000);
+            });
+    },
+
+    isSameUserAsPrev(index) {
+        if (index === 0) return false;
+        const prev = this.messages[index - 1];
+        const curr = this.messages[index];
+        if (!prev || !curr || prev.user_id !== curr.user_id) return false;
+        return (new Date(curr.created_at) - new Date(prev.created_at)) < 300000;
+    },
+
+    formatTime(iso) {
+        if (!iso) return '';
+        return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    },
+
+    async sendMessage() {
+        const body = this.newMessage.trim();
+        if (!body && this.selectedFiles.length === 0) return;
+
+        const fd = new FormData();
+        if (body) fd.append('body', body);
+        if (this.replyTo) fd.append('parent_id', this.replyTo.id);
+        if (this.scheduledAt) fd.append('scheduled_at', this.scheduledAt);
+        this.selectedFiles.forEach(f => fd.append('attachments[]', f));
+
+        this.newMessage = '';
+        this.replyTo = null;
+        this.scheduledAt = null;
+        this.selectedFiles = [];
+
+        try {
+            const res = await fetch(`/conversations/${conversationId}/messages`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
+                body: fd,
+            });
+            const data = await res.json();
+            if (data.message && !this.messages.find(m => m.id === data.message.id)) {
+                this.messages.push({ ...data.message, link_previews: [] });
+                this.$nextTick(() => this.scrollToBottom());
+            }
+        } catch (e) { console.error('Send failed:', e); }
+    },
+
+    handleTyping() {
+        if (!window.Echo) return;
+        clearTimeout(this._typingTimeout);
+        window.Echo.private(`conversation.${conversationId}`).whisper('typing', {
+            user_id: currentUserId,
+            name: document.body.dataset?.userName ?? 'Someone',
+        });
+        this._typingTimeout = setTimeout(() => {}, 3000);
+    },
+
+    async toggleReaction(message, emoji) {
+        try {
+            const data = await apiFetch(`/messages/${message.id}/reactions`, { method: 'POST', body: JSON.stringify({ emoji }) });
+            message.reactions = data.reactions;
+        } catch (e) { console.error(e); }
+    },
+
+    startEdit(msg) { this.editingMessageId = msg.id; this.editBody = msg.body ?? ''; },
+
+    async saveEdit(msg) {
+        if (!this.editBody.trim()) return;
+        try {
+            await apiFetch(`/messages/${msg.id}`, { method: 'PATCH', body: JSON.stringify({ body: this.editBody }) });
+            msg.body = this.editBody; msg.is_edited = true; this.editingMessageId = null;
+        } catch (e) { console.error(e); }
+    },
+
+    async deleteMessage(msg) {
+        if (!confirm('Delete this message?')) return;
+        try {
+            await apiFetch(`/messages/${msg.id}`, { method: 'DELETE' });
+            this.messages = this.messages.filter(m => m.id !== msg.id);
+        } catch (e) { console.error(e); }
+    },
+
+    async toggleBookmark(msg) {
+        try { await apiFetch(`/messages/${msg.id}/bookmark`, { method: 'POST' }); }
+        catch (e) { console.error(e); }
+    },
+
+    openForwardModal(msg) { this.forwardingMessage = msg; this.forwardTargets = []; this.forwardModalOpen = true; },
+
+    async forwardMessage() {
+        if (!this.forwardingMessage || !this.forwardTargets.length) return;
+        try {
+            await apiFetch(`/messages/${this.forwardingMessage.id}/forward`, {
+                method: 'POST',
+                body: JSON.stringify({ conversation_ids: this.forwardTargets }),
+            });
+            this.forwardModalOpen = false;
+        } catch (e) { console.error(e); }
+    },
+
+    handleFileSelect(e) { this.selectedFiles = [...this.selectedFiles, ...Array.from(e.target.files)].slice(0, 10); },
+    removeFile(i) { this.selectedFiles = this.selectedFiles.filter((_, idx) => idx !== i); },
+
+    async exportChat() {
+        try {
+            await apiFetch(`/conversations/${conversationId}/export`, {
+                method: 'POST',
+                body: JSON.stringify({ format: this.exportFormat, from: this.exportFrom || null, to: this.exportTo || null }),
+            });
+            this.showExportModal = false;
+            alert('Export started! You will receive a download link shortly.');
+        } catch (e) { console.error(e); }
+    },
+
+    async startCall(userId, type) {
+        try {
+            await apiFetch(`/conversations/${conversationId}/call`, { method: 'POST', body: JSON.stringify({ type }) });
+        } catch (e) { alert('Could not start call: ' + e.message); }
+    },
+
+    scrollToBottom() {
+        const c = this.$refs?.messagesContainer || document.getElementById('messages-container');
+        if (c) c.scrollTop = c.scrollHeight;
+    },
+
+    markRead() {
+        fetch(`/conversations/${conversationId}/read`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
+        }).catch(() => {});
+    },
+}));
+
+// ─── Poll Widget ─────────────────────────────────────────────────────────────
+
+Alpine.data('pollWidget', (pollId, initialData) => ({
+    poll: { options: [], total_votes: 0, is_closed: false, ...initialData },
+    loading: false,
+
+    async vote(optionId) {
+        if (this.loading || this.poll.is_closed) return;
+        this.loading = true;
+        try {
+            const data = await apiFetch(`/polls/${pollId}/vote`, { method: 'POST', body: JSON.stringify({ option_id: optionId }) });
+            Object.assign(this.poll, data);
+        } catch (e) { console.error(e); }
+        finally { this.loading = false; }
+    },
+
+    percentage(option) {
+        const total = this.poll.total_votes ?? 0;
+        return total > 0 ? Math.round(((option.votes_count ?? 0) / total) * 100) : 0;
+    },
+}));
+
+// ─── Status Picker ───────────────────────────────────────────────────────────
+
+Alpine.data('statusPicker', (initial) => ({
+    open: false,
+    statusType: initial?.type ?? 'available',
+    statusText: initial?.message ?? '',
+    statusEmoji: initial?.emoji ?? '',
+    clearAfter: '',
+    emojis: ['😊','😎','🤔','😴','🏖️','💼','🎯','🔥','✅','❌','📚','🎮','🍕','☕','🚀','💡','🎵','🏃','🤒','🔕'],
+
+    async save() {
+        try {
+            await apiFetch('/profile/status', {
+                method: 'PATCH',
+                body: JSON.stringify({ status_type: this.statusType, status_message: this.statusText, status_emoji: this.statusEmoji, clear_after: this.clearAfter || null }),
+            });
+            this.open = false;
+        } catch (e) { console.error(e); }
+    },
+}));
+
+// ─── Scheduled Picker ────────────────────────────────────────────────────────
+
+Alpine.data('scheduledPicker', () => ({
+    open: false,
+    scheduledAt: '',
+    minDate: new Date(Date.now() + 60000).toISOString().slice(0, 16),
+
+    applySchedule() {
+        if (!this.scheduledAt) return;
+        // Find parent chatConversation and set scheduledAt
+        const chat = this.$el.closest('[x-data]').__x?.$data;
+        if (chat) chat.scheduledAt = this.scheduledAt;
+        this.open = false;
+    },
+}));
+
+window.Alpine = Alpine;
+Alpine.start();
