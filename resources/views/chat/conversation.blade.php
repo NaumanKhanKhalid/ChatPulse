@@ -216,11 +216,11 @@
                             </div>
 
                             {{-- Bubble --}}
-                            <div class="px-3.5 py-2.5 max-w-full"
-                                 :class="message.user_id == currentUserId
-                                     ? 'text-white rounded-2xl rounded-br-sm'
-                                     : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-2xl rounded-bl-sm shadow-sm border border-slate-100 dark:border-gray-600'"
-                                 :style="message.user_id == currentUserId ? 'background-color:#10b981;' : ''">
+                            <div class="px-3.5 py-2.5 max-w-full rounded-2xl"
+                                 :class="message.user_id == currentUserId ? 'rounded-br-sm' : 'rounded-bl-sm'"
+                                 :style="message.user_id == currentUserId
+                                     ? 'background:#10b981; color:#fff;'
+                                     : 'background:#ffffff; color:#1f2937; border:1px solid #e2e8f0;'">
 
                                 {{-- Message text --}}
                                 <p x-show="!editingMessageId || editingMessageId !== message.id"
