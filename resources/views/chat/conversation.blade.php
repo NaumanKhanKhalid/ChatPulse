@@ -1,0 +1,437 @@
+@extends('layouts.app')
+@section('title', $conversation->getDisplayName(auth()->user()))
+
+@section('left-panel')
+@php $conversations = app(\App\Services\ConversationService::class)->getUserConversations(auth()->user()) @endphp
+<div class="flex flex-col h-full" x-data="{ search: '' }">
+    <div class="p-4 border-b border-sidebar-border dark:border-gray-700">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold text-gray-900 dark:text-white text-sm">Messages</h2>
+            <a href="{{ route('groups.create') }}" class="w-7 h-7 bg-primary hover:bg-primary-hover text-white rounded-full flex items-center justify-center transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </a>
+        </div>
+        <div class="relative">
+            <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" x-model="search" placeholder="Search..." class="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm focus:outline-none dark:text-white">
+        </div>
+    </div>
+    <div class="flex-1 overflow-y-auto">
+        @foreach($conversations as $conv)
+        @php
+            $cName = $conv->getDisplayName(auth()->user());
+            $cAvatar = $conv->getAvatarUrl(auth()->user());
+            $cUnread = $conv->getUnreadCountFor(auth()->user());
+            $cOther = $conv->isDirect() ? $conv->getOtherUser(auth()->user()) : null;
+        @endphp
+        <a href="{{ route('chat.conversation', $conv) }}"
+           x-show="!search || '{{ strtolower($cName) }}'.includes(search.toLowerCase())"
+           class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors border-l-2 {{ $conv->id === $conversation->id ? 'border-primary bg-emerald-50/50' : 'border-transparent' }}">
+            <div class="relative flex-shrink-0">
+                <img src="{{ $cAvatar }}" alt="{{ $cName }}" class="w-10 h-10 rounded-full object-cover">
+                @if($cOther)
+                <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white {{ $cOther->is_online ? 'bg-green-500' : 'bg-gray-400' }}"></span>
+                @endif
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                    <span class="font-medium text-sm text-gray-900 dark:text-white truncate">{{ $cName }}</span>
+                    @if($conv->lastMessage)<span class="text-xs text-gray-400">{{ $conv->lastMessage->created_at->format('H:i') }}</span>@endif
+                </div>
+                <div class="flex items-center justify-between mt-0.5">
+                    <p class="text-xs text-gray-500 truncate">{{ $conv->lastMessage?->body ?? 'No messages yet' }}</p>
+                    @if($cUnread > 0)<span class="ml-2 bg-primary text-white text-xs rounded-full px-1.5 py-0.5 flex-shrink-0">{{ $cUnread }}</span>@endif
+                </div>
+            </div>
+        </a>
+        @endforeach
+    </div>
+</div>
+@endsection
+
+@section('content')
+@php
+    $currentUser = auth()->user();
+    $convName = $conversation->getDisplayName($currentUser);
+    $convAvatar = $conversation->getAvatarUrl($currentUser);
+    $otherUser = $conversation->isDirect() ? $conversation->getOtherUser($currentUser) : null;
+    $participant = $conversation->participants()->where('user_id', $currentUser->id)->first();
+    $isAdmin = $conversation->isGroup() && $participant?->role === 'admin';
+@endphp
+
+<div class="flex flex-col h-full" x-data="chatConversation({{ $conversation->id }}, {{ auth()->id() }}, {{ json_encode($messages) }})">
+    {{-- Chat header --}}
+    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div class="flex items-center gap-3">
+            <div class="relative">
+                <img src="{{ $convAvatar }}" alt="{{ $convName }}" class="w-9 h-9 rounded-full object-cover">
+                @if($otherUser)
+                <span x-bind:class="{{ $otherUser->is_online ? 'true' : 'false' }} ? 'bg-green-500' : 'bg-gray-400'" class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"></span>
+                @endif
+            </div>
+            <div>
+                <h3 class="font-semibold text-sm text-gray-900 dark:text-white">{{ $convName }}</h3>
+                @if($otherUser && $otherUser->status_message)
+                <p class="text-xs text-gray-500">{{ $otherUser->status_emoji }} {{ $otherUser->status_message }}</p>
+                @elseif($conversation->isGroup())
+                <p class="text-xs text-gray-500">{{ $conversation->participants()->count() }} members</p>
+                @else
+                <p class="text-xs text-gray-500" x-text="typingUsers.length ? typingUsers.join(', ') + ' is typing...' : ({{ $otherUser?->is_online ? 'true' : 'false' }} ? 'Online' : 'Offline')"></p>
+                @endif
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            {{-- Call buttons (DM only) --}}
+            @if($conversation->isDirect() && $otherUser)
+            <button @click="startCall({{ $otherUser->id }}, 'audio')" title="Voice Call" class="w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+            </button>
+            <button @click="startCall({{ $otherUser->id }}, 'video')" title="Video Call" class="w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+            </button>
+            @endif
+
+            {{-- Right panel toggle --}}
+            <button onclick="document.getElementById('right-panel').classList.toggle('hidden')" class="w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 flex items-center justify-center transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </button>
+
+            {{-- Options menu --}}
+            <div class="relative" x-data="{ open: false }">
+                <button @click="open = !open" class="w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 flex items-center justify-center transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                </button>
+                <div x-show="open" @click.away="open = false" x-transition
+                     class="absolute right-0 top-10 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-20" style="display:none">
+                    <button @click="showExportModal = true; open = false" class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Export Chat</button>
+                    @if($conversation->isGroup() && $isAdmin)
+                    <button @click="showGroupSettings = true; open = false" class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Group Settings</button>
+                    @endif
+                    @if($conversation->isGroup())
+                    <form method="POST" action="{{ route('groups.leave', $conversation) }}" onsubmit="return confirm('Leave this group?')">
+                        @csrf
+                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50">Leave Group</button>
+                    </form>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Messages area --}}
+    <div class="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-white dark:bg-gray-900" x-ref="messagesContainer" id="messages-container">
+        {{-- Skeleton loader --}}
+        <template x-if="loading">
+            <div class="space-y-4">
+                <template x-for="i in 5">
+                    <div class="flex gap-3 animate-pulse">
+                        <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0"></div>
+                        <div class="flex-1">
+                            <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
+                            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded" :style="`width: ${60 + i * 10}%`"></div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <template x-if="!loading">
+            <div>
+                <template x-for="(message, index) in messages" :key="message.id">
+                    <div class="group relative flex gap-3 py-0.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg px-2 -mx-2"
+                         :class="{ 'bg-emerald-50/30 dark:bg-emerald-900/10': message.user_id == currentUserId }">
+                        {{-- Avatar (only for first message in group) --}}
+                        <div class="w-8 flex-shrink-0 mt-1"
+                             x-show="!isSameUserAsPrev(index)">
+                            <img :src="message.user?.avatar_url" :alt="message.user?.name" class="w-8 h-8 rounded-full object-cover">
+                        </div>
+                        <div class="w-8 flex-shrink-0" x-show="isSameUserAsPrev(index)"></div>
+
+                        <div class="flex-1 min-w-0">
+                            {{-- Name + time (only first in group) --}}
+                            <div class="flex items-baseline gap-2 mb-0.5" x-show="!isSameUserAsPrev(index)">
+                                <span class="font-semibold text-sm text-gray-900 dark:text-white" x-text="message.user?.name"></span>
+                                <span x-show="message.user?.is_guest" class="text-xs bg-yellow-100 text-yellow-700 px-1.5 rounded font-medium">Guest</span>
+                                <span class="text-xs text-gray-400" x-text="formatTime(message.created_at)"></span>
+                                <span x-show="message.is_edited" class="text-xs text-gray-400 italic">(edited)</span>
+                            </div>
+
+                            {{-- Forwarded label --}}
+                            <div x-show="message.type === 'forwarded'" class="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                                Forwarded
+                            </div>
+
+                            {{-- Reply reference --}}
+                            <div x-show="message.parent" class="border-l-2 border-primary/40 pl-2 mb-1 text-xs text-gray-500">
+                                <span class="font-medium" x-text="message.parent?.user?.name"></span>:
+                                <span x-text="(message.parent?.body || '').slice(0, 80)"></span>
+                            </div>
+
+                            {{-- System message --}}
+                            <template x-if="message.type === 'system'">
+                                <p class="text-xs text-gray-400 italic text-center py-1" x-text="message.body"></p>
+                            </template>
+
+                            {{-- Text message --}}
+                            <template x-if="message.type !== 'system'">
+                                <div>
+                                    <p x-show="!editingMessageId || editingMessageId !== message.id"
+                                       class="text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap break-words"
+                                       x-text="message.body"></p>
+
+                                    {{-- Edit input --}}
+                                    <div x-show="editingMessageId === message.id" class="flex gap-2">
+                                        <input type="text" x-model="editBody"
+                                               class="flex-1 border border-primary/40 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                               @keydown.enter="saveEdit(message)"
+                                               @keydown.escape="editingMessageId = null">
+                                        <button @click="saveEdit(message)" class="text-xs bg-primary text-white px-3 py-1.5 rounded-lg">Save</button>
+                                        <button @click="editingMessageId = null" class="text-xs text-gray-500 px-2">Cancel</button>
+                                    </div>
+
+                                    {{-- Attachments --}}
+                                    <template x-for="att in (message.attachments || [])" :key="att.id">
+                                        <div class="mt-2">
+                                            <template x-if="att.file_type && att.file_type.startsWith('image/')">
+                                                <a :href="att.url" target="_blank">
+                                                    <img :src="att.thumbnail_path ? '/storage/' + att.thumbnail_path : att.url"
+                                                         class="max-w-xs max-h-48 rounded-lg object-cover cursor-pointer hover:opacity-90 transition">
+                                                </a>
+                                            </template>
+                                            <template x-if="!att.file_type || !att.file_type.startsWith('image/')">
+                                                <a :href="att.url" target="_blank" class="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-2 max-w-xs hover:bg-gray-200 transition">
+                                                    <svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                    <div class="min-w-0">
+                                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate" x-text="att.original_name"></p>
+                                                        <p class="text-xs text-gray-500" x-text="att.formatted_size"></p>
+                                                    </div>
+                                                </a>
+                                            </template>
+                                        </div>
+                                    </template>
+
+                                    {{-- Link previews --}}
+                                    <template x-for="preview in (message.link_previews || [])" :key="preview.url">
+                                        <a :href="preview.url" target="_blank" rel="noopener"
+                                           class="mt-2 flex gap-3 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-3 hover:bg-gray-100 transition max-w-sm">
+                                            <img x-show="preview.image" :src="preview.image" class="w-16 h-16 rounded-lg object-cover flex-shrink-0">
+                                            <div class="min-w-0">
+                                                <p class="font-semibold text-sm text-gray-900 dark:text-white truncate" x-text="preview.title"></p>
+                                                <p class="text-xs text-gray-500 line-clamp-2 mt-0.5" x-text="preview.description"></p>
+                                                <p class="text-xs text-primary mt-1" x-text="preview.site_name"></p>
+                                            </div>
+                                        </a>
+                                    </template>
+
+                                    {{-- Poll --}}
+                                    <template x-if="message.type === 'poll' && message.poll">
+                                        <div x-data="pollWidget(message.poll.id, message.poll)" class="mt-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 max-w-sm">
+                                            <p class="font-semibold text-sm text-gray-900 dark:text-white mb-3" x-text="poll.question"></p>
+                                            <template x-for="option in poll.options" :key="option.id">
+                                                <button @click="!poll.is_closed && vote(option.id)"
+                                                        class="w-full mb-2 relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-600 text-left px-3 py-2 hover:border-primary transition-colors">
+                                                    <div class="absolute inset-0 bg-primary/10 transition-all" :style="`width: ${percentage(option)}%`"></div>
+                                                    <div class="relative flex items-center justify-between">
+                                                        <span class="text-sm text-gray-800 dark:text-gray-200" x-text="option.text"></span>
+                                                        <span class="text-xs text-gray-500 font-medium" x-text="percentage(option) + '%'"></span>
+                                                    </div>
+                                                </button>
+                                            </template>
+                                            <p class="text-xs text-gray-400 mt-2" x-text="poll.total_votes + ' vote(s)'"></p>
+                                        </div>
+                                    </template>
+
+                                    {{-- Reactions --}}
+                                    <div x-show="(message.reactions || []).length > 0" class="flex flex-wrap gap-1 mt-1">
+                                        <template x-for="reaction in (message.reactions || [])" :key="reaction.emoji">
+                                            <button @click="toggleReaction(message, reaction.emoji)"
+                                                    class="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full px-2 py-0.5 text-xs transition-colors"
+                                                    :title="(reaction.users || []).join(', ')">
+                                                <span x-text="reaction.emoji"></span>
+                                                <span x-text="reaction.count"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        {{-- Hover actions --}}
+                        <div class="message-hover-actions" x-show="message.type !== 'system'">
+                            {{-- React --}}
+                            <div class="relative" x-data="{ emojiOpen: false }">
+                                <button @click="emojiOpen = !emojiOpen" class="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-700 transition-colors" title="React">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </button>
+                                <div x-show="emojiOpen" @click.away="emojiOpen = false" x-transition
+                                     class="absolute bottom-8 right-0 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-2 shadow-xl z-30 flex flex-wrap gap-1 w-48" style="display:none">
+                                    <template x-for="emoji in ['👍','❤️','😂','😮','😢','🔥','✅','👏','🎉','💯']">
+                                        <button @click="toggleReaction(message, emoji); emojiOpen = false"
+                                                class="text-lg p-1 hover:bg-gray-100 rounded transition-colors" x-text="emoji"></button>
+                                    </template>
+                                </div>
+                            </div>
+                            {{-- Reply --}}
+                            <button @click="replyTo = message" class="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-700 transition-colors" title="Reply">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                            </button>
+                            {{-- Edit (own messages) --}}
+                            <button x-show="message.user_id == currentUserId" @click="startEdit(message)" class="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-700 transition-colors" title="Edit">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </button>
+                            {{-- Forward --}}
+                            <button @click="openForwardModal(message)" class="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-700 transition-colors" title="Forward">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                            </button>
+                            {{-- Bookmark --}}
+                            <button @click="toggleBookmark(message)" class="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-700 transition-colors" title="Bookmark">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+                            </button>
+                            {{-- Delete --}}
+                            <button x-show="message.user_id == currentUserId || {{ auth()->user()->isAdmin() ? 'true' : 'false' }}"
+                                    @click="deleteMessage(message)"
+                                    class="p-1.5 hover:bg-red-50 rounded text-gray-500 hover:text-red-500 transition-colors" title="Delete">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+
+                {{-- Typing indicator --}}
+                <div x-show="typingUsers.length > 0" class="flex items-center gap-2 px-2 py-1">
+                    <div class="flex gap-1">
+                        <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                        <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                        <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                    </div>
+                    <span class="text-xs text-gray-500" x-text="typingUsers.join(', ') + ' is typing...'"></span>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    {{-- Reply preview --}}
+    <div x-show="replyTo" class="px-4 py-2 bg-primary/5 border-t border-primary/20 flex items-center justify-between">
+        <div class="flex items-center gap-2 text-sm">
+            <div class="w-0.5 h-8 bg-primary rounded-full flex-shrink-0"></div>
+            <div>
+                <p class="text-primary font-medium text-xs" x-text="'Replying to ' + replyTo?.user?.name"></p>
+                <p class="text-gray-600 text-xs truncate max-w-xs" x-text="(replyTo?.body || '').slice(0, 80)"></p>
+            </div>
+        </div>
+        <button @click="replyTo = null" class="text-gray-400 hover:text-gray-600 p-1">✕</button>
+    </div>
+
+    {{-- Message input --}}
+    <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+        {{-- Scheduled indicator --}}
+        <div x-show="scheduledAt" class="text-xs text-yellow-600 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-1.5 mb-2 flex items-center justify-between">
+            <span>Scheduled: <span x-text="scheduledAt"></span></span>
+            <button @click="scheduledAt = null" class="text-yellow-400 hover:text-yellow-600">✕</button>
+        </div>
+
+        <div class="flex items-end gap-2">
+            {{-- Attachment button --}}
+            <label class="w-9 h-9 flex-shrink-0 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center cursor-pointer transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                <input type="file" multiple class="hidden" @change="handleFileSelect($event)" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.zip">
+            </label>
+
+            {{-- Text area --}}
+            <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-xl px-4 py-2.5">
+                {{-- File previews --}}
+                <div x-show="selectedFiles.length > 0" class="flex flex-wrap gap-2 mb-2">
+                    <template x-for="(file, i) in selectedFiles" :key="i">
+                        <div class="flex items-center gap-1 bg-white dark:bg-gray-600 rounded-lg px-2 py-1 text-xs text-gray-700 dark:text-gray-200">
+                            <span x-text="file.name.slice(0, 20)"></span>
+                            <button @click="removeFile(i)" class="text-gray-400 hover:text-gray-600">✕</button>
+                        </div>
+                    </template>
+                </div>
+                <textarea x-model="newMessage" @keydown.enter.exact.prevent="sendMessage()"
+                          @input="handleTyping()"
+                          placeholder="Type your message..."
+                          rows="1"
+                          class="w-full bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:outline-none"
+                          style="max-height: 120px; overflow-y: auto"></textarea>
+            </div>
+
+            {{-- Schedule button --}}
+            <div class="relative" x-data="scheduledPicker()">
+                <button @click="open = !open" class="w-9 h-9 flex-shrink-0 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors" title="Schedule">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </button>
+                <div x-show="open" @click.away="open = false" x-transition
+                     class="absolute bottom-12 right-0 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl p-4 w-64 z-20" style="display:none">
+                    <p class="text-sm font-medium text-gray-800 dark:text-white mb-2">Schedule Message</p>
+                    <input type="datetime-local" x-model="scheduledAt" :min="minDate"
+                           class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 mb-2">
+                    <button @click="applySchedule()" class="w-full btn-primary text-sm py-2">Set Schedule</button>
+                </div>
+            </div>
+
+            {{-- Send button --}}
+            <button @click="sendMessage()" :disabled="!newMessage.trim() && selectedFiles.length === 0"
+                    class="w-10 h-10 flex-shrink-0 rounded-xl bg-primary hover:bg-primary-hover disabled:opacity-40 text-white flex items-center justify-center transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+            </button>
+        </div>
+    </div>
+
+    {{-- Forward modal --}}
+    <div x-show="forwardModalOpen" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" style="display:none">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md">
+            <div class="p-4 border-b border-gray-100 dark:border-gray-700">
+                <h3 class="font-semibold text-gray-900 dark:text-white">Forward Message</h3>
+            </div>
+            <div class="p-4 max-h-64 overflow-y-auto space-y-2">
+                @foreach($conversations ?? [] as $fc)
+                <label class="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                    <input type="checkbox" :value="{{ $fc->id }}" x-model="forwardTargets" class="rounded text-primary">
+                    <img src="{{ $fc->getAvatarUrl(auth()->user()) }}" class="w-8 h-8 rounded-full object-cover">
+                    <span class="text-sm text-gray-800 dark:text-gray-200">{{ $fc->getDisplayName(auth()->user()) }}</span>
+                </label>
+                @endforeach
+            </div>
+            <div class="p-4 border-t border-gray-100 flex gap-2 justify-end">
+                <button @click="forwardModalOpen = false" class="btn-secondary text-sm">Cancel</button>
+                <button @click="forwardMessage()" :disabled="forwardTargets.length === 0" class="btn-primary text-sm">Forward</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Export modal --}}
+    <div x-show="showExportModal" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" style="display:none">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-4">Export Chat</h3>
+            <div class="space-y-3 mb-4">
+                <div>
+                    <label class="text-sm text-gray-700 dark:text-gray-300 mb-1 block">Format</label>
+                    <select x-model="exportFormat" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+                        <option value="csv">CSV</option>
+                        <option value="pdf">PDF</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-700 dark:text-gray-300 mb-1 block">From (optional)</label>
+                    <input type="date" x-model="exportFrom" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-700 dark:text-gray-300 mb-1 block">To (optional)</label>
+                    <input type="date" x-model="exportTo" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+                </div>
+            </div>
+            <div class="flex gap-2 justify-end">
+                <button @click="showExportModal = false" class="btn-secondary text-sm">Cancel</button>
+                <button @click="exportChat()" class="btn-primary text-sm">Export</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@section('right-panel')
+@include('chat.right-panel')
+@endsection
