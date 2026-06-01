@@ -148,6 +148,7 @@ Alpine.data('teamflowApp', () => ({
 Alpine.data('chatConversation', (conversationId, currentUserId, initialMessages) => ({
     messages: Array.isArray(initialMessages) ? initialMessages : [],
     loading: false,
+    isDark: document.documentElement.classList.contains('dark'),
     newMessage: '',
     typingUsers: [],
     _typingTimeout: null,
@@ -168,6 +169,12 @@ Alpine.data('chatConversation', (conversationId, currentUserId, initialMessages)
     init() {
         this.$nextTick(() => this.scrollToBottom());
         this.markRead();
+
+        // Keep isDark in sync when dark mode toggled globally
+        const observer = new MutationObserver(() => {
+            this.isDark = document.documentElement.classList.contains('dark');
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
         if (!window.Echo) return;
 

@@ -86,10 +86,13 @@
         messages: {!! json_encode($messages, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
     };
 </script>
-<div class="flex flex-col h-full bg-white dark:bg-gray-900" x-data="chatConversation(window.__chatInit.conversationId, window.__chatInit.currentUserId, window.__chatInit.messages)" style="font-family: 'Inter', sans-serif;">
+<div class="flex flex-col h-full" x-data="chatConversation(window.__chatInit.conversationId, window.__chatInit.currentUserId, window.__chatInit.messages)"
+     :style="isDark ? 'background:#111827; color:#f3f4f6;' : 'background:#ffffff; color:#111827;'"
+     style="font-family: 'Inter', sans-serif;">
 
     {{-- Chat header --}}
-    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+    <div class="flex items-center justify-between px-4 py-3 flex-shrink-0"
+         :style="isDark ? 'background:#1f2937; border-bottom:1px solid #374151;' : 'background:#ffffff; border-bottom:1px solid #f1f5f9;'">
         <div class="flex items-center gap-3">
             <div class="relative">
                 <img src="{{ $convAvatar }}" alt="{{ $convName }}" class="w-9 h-9 rounded-full object-cover">
@@ -164,7 +167,8 @@
     </div>
 
     {{-- Messages area --}}
-    <div class="flex-1 overflow-y-auto px-4 py-4 bg-slate-50 dark:bg-gray-900" x-ref="messagesContainer" id="messages-container">
+    <div class="flex-1 overflow-y-auto px-4 py-4" x-ref="messagesContainer" id="messages-container"
+         :style="isDark ? 'background:#111827;' : 'background:#f8fafc;'">
 
         <div class="space-y-1">
             <template x-for="(message, index) in messages" :key="message.id">
@@ -196,7 +200,7 @@
                             {{-- Name row (received, first in group) --}}
                             <div x-show="!isSameUserAsPrev(index) && message.user_id != currentUserId"
                                  class="flex items-center gap-1.5 mb-1 px-1">
-                                <span class="text-xs font-semibold text-gray-700 dark:text-gray-300" x-text="message.user?.name"></span>
+                                <span class="text-xs font-semibold" :style="isDark ? 'color:#d1d5db;' : 'color:#374151;'" x-text="message.user?.name"></span>
                                 <span x-show="message.user?.is_guest" class="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-medium">Guest</span>
                             </div>
 
@@ -219,8 +223,10 @@
                             <div class="px-3.5 py-2.5 max-w-full rounded-2xl"
                                  :class="message.user_id == currentUserId ? 'rounded-br-sm' : 'rounded-bl-sm'"
                                  :style="message.user_id == currentUserId
-                                     ? 'background:#10b981; color:#fff;'
-                                     : 'background:#ffffff; color:#1f2937; border:1px solid #e2e8f0;'">
+                                     ? 'background:#10b981; color:#ffffff;'
+                                     : (isDark
+                                         ? 'background:#374151; color:#f3f4f6; border:1px solid #4b5563;'
+                                         : 'background:#ffffff; color:#111827; border:1px solid #e2e8f0;')">
 
                                 {{-- Message text --}}
                                 <p x-show="!editingMessageId || editingMessageId !== message.id"
@@ -259,8 +265,8 @@
 
                             {{-- Timestamp + edited --}}
                             <div class="flex items-center gap-1 mt-0.5 px-1">
-                                <span class="text-xs text-gray-400" x-text="formatTime(message.created_at)"></span>
-                                <span x-show="message.is_edited" class="text-xs text-gray-400 italic">(edited)</span>
+                                <span class="text-xs" style="color:#9ca3af;" x-text="formatTime(message.created_at)"></span>
+                                <span x-show="message.is_edited" class="text-xs italic" style="color:#9ca3af;">(edited)</span>
                             </div>
 
                             {{-- Reactions --}}
@@ -345,7 +351,8 @@
     </div>
 
     {{-- Message input --}}
-    <div class="px-4 py-3 border-t border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+    <div class="px-4 py-3 flex-shrink-0"
+         :style="isDark ? 'background:#1f2937; border-top:1px solid #374151;' : 'background:#ffffff; border-top:1px solid #f1f5f9;'">
         {{-- Scheduled indicator --}}
         <div x-show="scheduledAt"
              class="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-1.5 mb-2 flex items-center justify-between">
@@ -367,7 +374,8 @@
             </label>
 
             {{-- Input area --}}
-            <div class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 focus-within:border-emerald-300 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
+            <div class="flex-1 rounded-xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all"
+                 :style="isDark ? 'background:#374151; border:1px solid #4b5563;' : 'background:#f8fafc; border:1px solid #e2e8f0;'">
                 {{-- File previews --}}
                 <div x-show="selectedFiles.length > 0" class="flex flex-wrap gap-2 mb-2">
                     <template x-for="(file, i) in selectedFiles" :key="i">
@@ -386,8 +394,8 @@
                           @input="handleTyping()"
                           placeholder="Type your message..."
                           rows="1"
-                          class="w-full bg-transparent text-sm text-gray-900 placeholder-gray-400 resize-none focus:outline-none leading-relaxed"
-                          style="max-height: 120px; overflow-y: auto; font-family: 'Inter', sans-serif;"></textarea>
+                          class="w-full bg-transparent resize-none focus:outline-none leading-relaxed text-sm"
+                          :style="isDark ? 'color:#f3f4f6; max-height:120px; overflow-y:auto; font-family:Inter,sans-serif;' : 'color:#111827; max-height:120px; overflow-y:auto; font-family:Inter,sans-serif;'"></textarea>
             </div>
 
             {{-- Schedule button --}}
