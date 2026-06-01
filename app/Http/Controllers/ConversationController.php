@@ -25,10 +25,41 @@ class ConversationController extends Controller
         $user = auth()->user();
         $messages = $conversation->messages()
             ->with(['user', 'attachments', 'reactions.user', 'parent.user', 'poll.options.votes.user'])
-            ->orderBy('created_at')
-            ->latest()
-            ->paginate(50);
-        $messages = $messages->reverse()->values();
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(fn($m) => [
+                'id'                => $m->id,
+                'conversation_id'   => $m->conversation_id,
+                'user_id'           => $m->user_id,
+                'body'              => $m->body,
+                'type'              => $m->type,
+                'parent_id'         => $m->parent_id,
+                'forwarded_from_id' => $m->forwarded_from_id,
+                'is_edited'         => $m->is_edited,
+                'sent_at'           => $m->sent_at?->toISOString(),
+                'created_at'        => $m->created_at->toISOString(),
+                'link_previews'     => [],
+                'user'              => $m->user ? [
+                    'id'         => $m->user->id,
+                    'name'       => $m->user->name,
+                    'avatar_url' => $m->user->avatar_url,
+                    'is_guest'   => $m->user->is_guest,
+                ] : null,
+                'attachments' => $m->attachments->map(fn($a) => [
+                    'id'             => $a->id,
+                    'original_name'  => $a->original_name,
+                    'url'            => $a->url,
+                    'file_type'      => $a->file_type,
+                    'formatted_size' => $a->formatted_size,
+                ])->values()->toArray(),
+                'reactions' => $m->getGroupedReactions(),
+                'parent'    => $m->parent ? [
+                    'id'   => $m->parent->id,
+                    'body' => $m->parent->body,
+                    'user' => ['name' => $m->parent->user?->name],
+                ] : null,
+            ])
+            ->values();
         $participants = $conversation->participants()->with('user')->get();
         $pinnedMessages = $conversation->pins()->with('message.user')->get();
         return view('chat.conversation', compact('conversation', 'messages', 'participants', 'pinnedMessages', 'user'));
