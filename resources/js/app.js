@@ -40,7 +40,9 @@ Alpine.data('teamflowApp', () => ({
     isCameraOff: false,
 
     init() {
-        document.documentElement.classList.toggle('dark', this.darkMode);
+        // Apply saved dark mode immediately on load
+        if (this.darkMode) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
         this.startHeartbeat();
 
         if (!window.Echo) return;
@@ -69,7 +71,8 @@ Alpine.data('teamflowApp', () => ({
     toggleDark() {
         this.darkMode = !this.darkMode;
         localStorage.setItem('darkMode', String(this.darkMode));
-        document.documentElement.classList.toggle('dark', this.darkMode);
+        if (this.darkMode) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
         fetch('/settings/dark-mode', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },

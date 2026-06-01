@@ -3,7 +3,7 @@
 
 @section('left-panel')
 @php $conversations = app(\App\Services\ConversationService::class)->getUserConversations(auth()->user()) @endphp
-<div class="flex flex-col h-full bg-white" x-data="{ search: '' }">
+<div class="flex flex-col h-full bg-white dark:bg-gray-800" x-data="{ search: '' }">
     {{-- Header --}}
     <div class="px-4 pt-5 pb-3 border-b border-slate-100">
         <div class="flex items-center justify-between mb-3">
@@ -39,7 +39,7 @@
         @endphp
         <a href="{{ route('chat.conversation', $conv) }}"
            x-show="!search || '{{ strtolower($cName) }}'.includes(search.toLowerCase())"
-           class="flex items-center gap-3 px-4 py-3 cursor-pointer transition-all border-l-2 {{ $isActive ? 'border-emerald-500 bg-emerald-50/40' : 'border-transparent hover:bg-slate-50' }}"
+           class="flex items-center gap-3 px-4 py-3 cursor-pointer transition-all border-l-2 {{ $isActive ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-900/20' : 'border-transparent hover:bg-slate-50 dark:hover:bg-gray-700/50' }}"
            style="font-family: 'Inter', sans-serif;">
             {{-- Avatar with online dot --}}
             <div class="relative flex-shrink-0">
@@ -86,10 +86,10 @@
         messages: {!! json_encode($messages, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
     };
 </script>
-<div class="flex flex-col h-full bg-white" x-data="chatConversation(window.__chatInit.conversationId, window.__chatInit.currentUserId, window.__chatInit.messages)" style="font-family: 'Inter', sans-serif;">
+<div class="flex flex-col h-full bg-white dark:bg-gray-900" x-data="chatConversation(window.__chatInit.conversationId, window.__chatInit.currentUserId, window.__chatInit.messages)" style="font-family: 'Inter', sans-serif;">
 
     {{-- Chat header --}}
-    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white flex-shrink-0">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <div class="flex items-center gap-3">
             <div class="relative">
                 <img src="{{ $convAvatar }}" alt="{{ $convName }}" class="w-9 h-9 rounded-full object-cover">
@@ -164,7 +164,7 @@
     </div>
 
     {{-- Messages area --}}
-    <div class="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-slate-50" x-ref="messagesContainer" id="messages-container">
+    <div class="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-slate-50 dark:bg-gray-900" x-ref="messagesContainer" id="messages-container">
 
         {{-- Skeleton loader --}}
         <template x-if="loading">
@@ -240,12 +240,13 @@
 
                                     {{-- Bubble --}}
                                     <div :class="message.user_id == currentUserId
-                                            ? 'bg-emerald-500/10 border border-emerald-100 rounded-2xl rounded-tr-sm'
-                                            : 'bg-white border border-slate-100 rounded-2xl rounded-tl-sm shadow-sm'"
+                                            ? 'text-white rounded-2xl rounded-tr-sm'
+                                            : 'bg-white dark:bg-gray-700 border border-slate-100 dark:border-gray-600 rounded-2xl rounded-tl-sm shadow-sm text-gray-800 dark:text-gray-100'"
+                                         :style="message.user_id == currentUserId ? 'background:#10b981;' : ''"
                                          class="px-4 py-2.5 relative">
 
                                         <p x-show="!editingMessageId || editingMessageId !== message.id"
-                                           class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap break-words"
+                                           class="text-sm leading-relaxed whitespace-pre-wrap break-words"
                                            x-text="message.body"></p>
 
                                         {{-- Edit input --}}
@@ -435,7 +436,7 @@
     </div>
 
     {{-- Message input --}}
-    <div class="px-4 py-3 border-t border-slate-100 bg-white flex-shrink-0">
+    <div class="px-4 py-3 border-t border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         {{-- Scheduled indicator --}}
         <div x-show="scheduledAt"
              class="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-1.5 mb-2 flex items-center justify-between">

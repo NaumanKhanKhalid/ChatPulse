@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" x-data x-bind:class="{ 'dark': $store.app.darkMode }">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- Prevent dark mode flash --}}
+    <script>if(localStorage.getItem('darkMode')==='true')document.documentElement.classList.add('dark');</script>
 </head>
 <body class="flex h-screen overflow-hidden bg-slate-50 dark:bg-gray-900" style="font-family:'Inter',sans-serif;" x-data="teamflowApp()" data-user-id="{{ auth()->id() }}" data-user-name="{{ auth()->user()?->name }}">
 
