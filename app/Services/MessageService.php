@@ -10,7 +10,6 @@ use App\Events\MessageUpdated;
 use App\Events\MessageDeleted;
 use App\Jobs\FetchLinkPreviewJob;
 use App\Jobs\NotifyParticipantsJob;
-use App\Jobs\BroadcastMessageJob;
 use Illuminate\Support\Str;
 
 class MessageService
@@ -41,7 +40,12 @@ class MessageService
                 ['read_at' => now()]
             );
 
-            BroadcastMessageJob::dispatch($message);
+            // Broadcast immediately (ShouldBroadcastNow) so other users see the message
+            // in real-time without needing the queue worker.
+            // toOthers() excludes the sender's socket so they don't see a duplicate
+            // (they already get the message from the HTTP response).
+            broadcast(new MessageSent($message))->toOthers();
+
             NotifyParticipantsJob::dispatch($message);
 
             // Check for URLs and fetch link previews
@@ -120,7 +124,7 @@ class MessageService
                 'last_activity_at' => now(),
             ]);
 
-            BroadcastMessageJob::dispatch($message);
+            broadcast(new MessageSent($message));
             $forwarded[] = $message;
         }
         return $forwarded;

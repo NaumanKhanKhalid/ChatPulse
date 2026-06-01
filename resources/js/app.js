@@ -230,23 +230,60 @@ Alpine.data('chatConversation', (conversationId, currentUserId, initialMessages)
         if (this.scheduledAt) fd.append('scheduled_at', this.scheduledAt);
         this.selectedFiles.forEach(f => fd.append('attachments[]', f));
 
+        // Optimistic message — shown instantly, replaced when server confirms
+        const tempId = 'temp-' + Date.now();
+        const optimistic = {
+            id: tempId,
+            user_id: currentUserId,
+            body: body || null,
+            type: 'text',
+            is_edited: false,
+            created_at: new Date().toISOString(),
+            sent_at: new Date().toISOString(),
+            user: { id: currentUserId, name: document.body.dataset?.userName ?? '', avatar_url: null, is_guest: false },
+            attachments: [],
+            reactions: [],
+            parent: this.replyTo ? { id: this.replyTo.id, body: this.replyTo.body, user: { name: this.replyTo.user?.name } } : null,
+            link_previews: [],
+            _pending: true,
+        };
+        this.messages.push(optimistic);
+        this.$nextTick(() => this.scrollToBottom());
+
+        const capturedReplyTo = this.replyTo;
         this.newMessage = '';
         this.replyTo = null;
         this.scheduledAt = null;
         this.selectedFiles = [];
 
         try {
+            const socketId = window.Echo?.socketId() ?? null;
+            const headers = { 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' };
+            if (socketId) headers['X-Socket-ID'] = socketId;
+
             const res = await fetch(`/conversations/${conversationId}/messages`, {
                 method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
+                headers,
                 body: fd,
             });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            if (data.message && !this.messages.find(m => m.id === data.message.id)) {
-                this.messages.push({ ...data.message, link_previews: [] });
-                this.$nextTick(() => this.scrollToBottom());
+
+            // Replace optimistic message with the confirmed server message
+            const idx = this.messages.findIndex(m => m.id === tempId);
+            if (idx !== -1) {
+                if (data.message) {
+                    this.messages.splice(idx, 1, { ...data.message, link_previews: [] });
+                } else {
+                    this.messages.splice(idx, 1);
+                }
             }
-        } catch (e) { console.error('Send failed:', e); }
+            this.$nextTick(() => this.scrollToBottom());
+        } catch (e) {
+            // Remove optimistic message on failure
+            this.messages = this.messages.filter(m => m.id !== tempId);
+            console.error('Send failed:', e);
+        }
     },
 
     handleTyping() {
