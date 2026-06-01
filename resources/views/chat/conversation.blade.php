@@ -164,219 +164,168 @@
     </div>
 
     {{-- Messages area --}}
-    <div class="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-slate-50 dark:bg-gray-900" x-ref="messagesContainer" id="messages-container">
+    <div class="flex-1 overflow-y-auto px-4 py-4 bg-slate-50 dark:bg-gray-900" x-ref="messagesContainer" id="messages-container">
 
-        {{-- Skeleton loader --}}
-        <template x-if="loading">
-            <div class="space-y-5">
-                <template x-for="i in 5">
-                    <div class="flex gap-3 animate-pulse">
-                        <div class="w-8 h-8 rounded-full bg-slate-200 flex-shrink-0"></div>
-                        <div class="flex-1">
-                            <div class="h-3 bg-slate-200 rounded w-24 mb-2"></div>
-                            <div class="h-9 bg-slate-200 rounded-2xl" :style="`width: ${50 + i * 8}%`"></div>
-                        </div>
+        <div class="space-y-1">
+            <template x-for="(message, index) in messages" :key="message.id">
+                <div class="group relative py-0.5">
+
+                    {{-- System message --}}
+                    <div x-show="message.type === 'system'" class="flex justify-center py-1">
+                        <span class="text-xs text-gray-400 italic bg-slate-100 dark:bg-gray-800 rounded-full px-3 py-1" x-text="message.body"></span>
                     </div>
-                </template>
-            </div>
-        </template>
 
-        <template x-if="!loading">
-            <div class="space-y-1">
-                <template x-for="(message, index) in messages" :key="message.id">
-                    <div class="group relative py-0.5 px-2">
+                    {{-- Normal message --}}
+                    <div x-show="message.type !== 'system'"
+                         class="flex items-end gap-2"
+                         :class="message.user_id == currentUserId ? 'flex-row-reverse' : 'flex-row'">
 
-                        {{-- System message --}}
-                        <template x-if="message.type === 'system'">
-                            <div class="flex justify-center py-1">
-                                <p class="text-xs text-gray-400 italic dark:text-gray-500 bg-slate-100 dark:bg-gray-800 rounded-full px-3 py-1" x-text="message.body"></p>
+                        {{-- Avatar (received only) --}}
+                        <div class="flex-shrink-0 w-8 h-8 self-end"
+                             :class="message.user_id == currentUserId ? 'hidden' : ''">
+                            <img x-show="!isSameUserAsPrev(index)"
+                                 :src="message.user?.avatar_url"
+                                 :alt="message.user?.name"
+                                 class="w-8 h-8 rounded-full object-cover">
+                        </div>
+
+                        {{-- Bubble column --}}
+                        <div class="flex flex-col max-w-[70%]"
+                             :class="message.user_id == currentUserId ? 'items-end' : 'items-start'">
+
+                            {{-- Name row (received, first in group) --}}
+                            <div x-show="!isSameUserAsPrev(index) && message.user_id != currentUserId"
+                                 class="flex items-center gap-1.5 mb-1 px-1">
+                                <span class="text-xs font-semibold text-gray-700 dark:text-gray-300" x-text="message.user?.name"></span>
+                                <span x-show="message.user?.is_guest" class="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-medium">Guest</span>
                             </div>
-                        </template>
 
-                        {{-- Normal message --}}
-                        <template x-if="message.type !== 'system'">
-                            <div class="flex gap-2.5 w-full"
-                                 :class="message.user_id == currentUserId ? 'justify-end' : 'justify-start'">
+                            {{-- Reply reference --}}
+                            <div x-show="message.parent"
+                                 class="flex items-center gap-1.5 mb-1.5 px-3 py-1.5 rounded-xl border-l-2 border-emerald-400 text-xs"
+                                 :class="message.user_id == currentUserId ? 'bg-emerald-700/30 text-emerald-100' : 'bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400'">
+                                <span class="font-semibold" x-text="message.parent?.user?.name"></span>:
+                                <span class="truncate" x-text="(message.parent?.body || '').slice(0, 60)"></span>
+                            </div>
 
-                                {{-- Avatar for received only --}}
-                                <template x-if="message.user_id != currentUserId">
-                                    <div class="flex-shrink-0 self-end w-8">
-                                        <img x-show="!isSameUserAsPrev(index)"
-                                             :src="message.user?.avatar_url" :alt="message.user?.name"
-                                             class="w-8 h-8 rounded-full object-cover">
-                                        <div x-show="isSameUserAsPrev(index)" class="w-8"></div>
+                            {{-- Forwarded label --}}
+                            <div x-show="message.type === 'forwarded'"
+                                 class="flex items-center gap-1 text-xs text-gray-400 mb-1 px-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                                Forwarded
+                            </div>
+
+                            {{-- Bubble --}}
+                            <div class="px-3.5 py-2.5 max-w-full"
+                                 :class="message.user_id == currentUserId
+                                     ? 'text-white rounded-2xl rounded-br-sm'
+                                     : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-2xl rounded-bl-sm shadow-sm border border-slate-100 dark:border-gray-600'"
+                                 :style="message.user_id == currentUserId ? 'background-color:#10b981;' : ''">
+
+                                {{-- Message text --}}
+                                <p x-show="!editingMessageId || editingMessageId !== message.id"
+                                   class="text-sm leading-relaxed whitespace-pre-wrap break-words"
+                                   x-text="message.body"></p>
+
+                                {{-- Edit input --}}
+                                <div x-show="editingMessageId === message.id" class="flex gap-2 min-w-[200px]">
+                                    <input type="text" x-model="editBody"
+                                           class="flex-1 border border-white/30 rounded-lg px-3 py-1.5 text-sm focus:outline-none bg-white/20 text-white placeholder-white/60"
+                                           @keydown.enter="saveEdit(message)"
+                                           @keydown.escape="editingMessageId = null">
+                                    <button @click="saveEdit(message)" class="text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition-colors">Save</button>
+                                    <button @click="editingMessageId = null" class="text-xs text-white/60 hover:text-white px-2 transition-colors">✕</button>
+                                </div>
+
+                                {{-- Attachments --}}
+                                <template x-for="att in (message.attachments || [])" :key="att.id">
+                                    <div class="mt-2">
+                                        <a x-show="att.file_type && att.file_type.startsWith('image/')"
+                                           :href="att.url" target="_blank">
+                                            <img :src="att.url" class="max-w-xs max-h-48 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity mt-1">
+                                        </a>
+                                        <a x-show="!att.file_type || !att.file_type.startsWith('image/')"
+                                           :href="att.url" target="_blank"
+                                           class="flex items-center gap-2 bg-black/10 rounded-xl px-3 py-2 max-w-xs hover:bg-black/20 transition-colors mt-1">
+                                            <svg class="w-5 h-5 flex-shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                            <div class="min-w-0">
+                                                <p class="text-sm font-medium truncate" x-text="att.original_name"></p>
+                                                <p class="text-xs opacity-70" x-text="att.formatted_size"></p>
+                                            </div>
+                                        </a>
                                     </div>
                                 </template>
+                            </div>
 
-                                {{-- Bubble column --}}
-                                <div class="flex flex-col max-w-[68%]"
-                                     :class="message.user_id == currentUserId ? 'items-end' : 'items-start'">
+                            {{-- Timestamp + edited --}}
+                            <div class="flex items-center gap-1 mt-0.5 px-1">
+                                <span class="text-xs text-gray-400" x-text="formatTime(message.created_at)"></span>
+                                <span x-show="message.is_edited" class="text-xs text-gray-400 italic">(edited)</span>
+                            </div>
 
-                                    {{-- Sender name (received only, first in group) --}}
-                                    <div class="flex items-baseline gap-2 mb-1 px-1"
-                                         x-show="!isSameUserAsPrev(index) && message.user_id != currentUserId">
-                                        <span class="font-semibold text-xs text-gray-700 dark:text-gray-300" x-text="message.user?.name"></span>
-                                        <span x-show="message.user?.is_guest" class="text-xs bg-yellow-100 text-yellow-700 px-1.5 rounded font-medium">Guest</span>
-                                        <span class="text-xs text-gray-400" x-text="formatTime(message.created_at)"></span>
-                                    </div>
-
-                                    {{-- Forwarded label --}}
-                                    <div x-show="message.type === 'forwarded'" class="flex items-center gap-1 text-xs text-gray-400 mb-1 px-1">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-                                        Forwarded
-                                    </div>
-
-                                    {{-- Reply reference --}}
-                                    <div x-show="message.parent" class="border-l-2 border-emerald-400/60 pl-2 mb-1.5 text-xs text-gray-500 bg-slate-50 dark:bg-gray-800 rounded-r-lg py-1 pr-2">
-                                        <span class="font-semibold text-emerald-600" x-text="message.parent?.user?.name"></span>:
-                                        <span x-text="(message.parent?.body || '').slice(0, 80)"></span>
-                                    </div>
-
-                                    {{-- Bubble --}}
-                                    <div :class="message.user_id == currentUserId
-                                             ? 'text-white rounded-2xl rounded-tr-sm'
-                                             : 'bg-white dark:bg-gray-700 border border-slate-100 dark:border-gray-600 rounded-2xl rounded-tl-sm shadow-sm text-gray-800 dark:text-gray-100'"
-                                         :style="message.user_id == currentUserId ? 'background:#10b981;' : ''"
-                                         class="px-4 py-2.5">
-
-                                        <p x-show="!editingMessageId || editingMessageId !== message.id"
-                                           class="text-sm leading-relaxed whitespace-pre-wrap break-words"
-                                           x-text="message.body"></p>
-
-                                        {{-- Edit input --}}
-                                        <div x-show="editingMessageId === message.id" class="flex gap-2">
-                                            <input type="text" x-model="editBody"
-                                                   class="flex-1 border border-emerald-300/60 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 bg-white dark:bg-gray-600 dark:text-white"
-                                                   @keydown.enter="saveEdit(message)"
-                                                   @keydown.escape="editingMessageId = null">
-                                            <button @click="saveEdit(message)" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg transition-colors">Save</button>
-                                            <button @click="editingMessageId = null" class="text-xs text-gray-400 hover:text-gray-600 px-2 transition-colors">✕</button>
-                                        </div>
-
-                                        {{-- Attachments --}}
-                                        <template x-for="att in (message.attachments || [])" :key="att.id">
-                                            <div class="mt-2">
-                                                <template x-if="att.file_type && att.file_type.startsWith('image/')">
-                                                    <a :href="att.url" target="_blank">
-                                                        <img :src="att.url" class="max-w-xs max-h-48 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity">
-                                                    </a>
-                                                </template>
-                                                <template x-if="!att.file_type || !att.file_type.startsWith('image/')">
-                                                    <a :href="att.url" target="_blank" class="flex items-center gap-2 bg-black/10 rounded-xl px-3 py-2 max-w-xs hover:bg-black/20 transition-colors">
-                                                        <svg class="w-5 h-5 flex-shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                                        <div class="min-w-0">
-                                                            <p class="text-sm font-medium truncate" x-text="att.original_name"></p>
-                                                            <p class="text-xs opacity-70" x-text="att.formatted_size"></p>
-                                                        </div>
-                                                    </a>
-                                                </template>
-                                            </div>
-                                        </template>
-
-                                        {{-- Link previews --}}
-                                        <template x-for="preview in (message.link_previews || [])" :key="preview.url">
-                                            <a :href="preview.url" target="_blank" rel="noopener"
-                                               class="mt-2 flex gap-3 bg-black/10 rounded-xl p-3 hover:bg-black/20 transition-colors max-w-sm">
-                                                <img x-show="preview.image" :src="preview.image" class="w-14 h-14 rounded-lg object-cover flex-shrink-0">
-                                                <div class="min-w-0">
-                                                    <p class="font-semibold text-sm truncate" x-text="preview.title"></p>
-                                                    <p class="text-xs opacity-70 line-clamp-2 mt-0.5" x-text="preview.description"></p>
-                                                </div>
-                                            </a>
-                                        </template>
-
-                                        {{-- Poll --}}
-                                        <template x-if="message.type === 'poll' && message.poll">
-                                            <div x-data="pollWidget(message.poll.id, message.poll)" class="mt-2 bg-white/10 rounded-xl p-4 max-w-sm">
-                                                <p class="font-semibold text-sm mb-3" x-text="poll.question"></p>
-                                                <template x-for="option in poll.options" :key="option.id">
-                                                    <button @click="!poll.is_closed && vote(option.id)" class="w-full mb-2 relative overflow-hidden rounded-xl border border-white/20 text-left px-3 py-2">
-                                                        <div class="absolute inset-0 bg-white/20 transition-all" :style="`width: ${percentage(option)}%`"></div>
-                                                        <div class="relative flex items-center justify-between">
-                                                            <span class="text-sm" x-text="option.text"></span>
-                                                            <span class="text-xs opacity-70 font-medium" x-text="percentage(option) + '%'"></span>
-                                                        </div>
-                                                    </button>
-                                                </template>
-                                                <p class="text-xs opacity-60 mt-2" x-text="poll.total_votes + ' votes'"></p>
-                                            </div>
-                                        </template>
-                                    </div>
-
-                                    {{-- Timestamp --}}
-                                    <div class="flex items-center gap-1 mt-0.5 px-1"
-                                         x-show="!isSameUserAsPrev(index)">
-                                        <span class="text-xs text-gray-400" x-text="formatTime(message.created_at)"></span>
-                                        <span x-show="message.is_edited" class="text-xs text-gray-400 italic">(edited)</span>
-                                    </div>
-
-                                    {{-- Reactions --}}
-                                    <div x-show="(message.reactions || []).length > 0" class="flex flex-wrap gap-1 mt-1 px-1">
-                                        <template x-for="reaction in (message.reactions || [])" :key="reaction.emoji">
-                                            <button @click="toggleReaction(message, reaction.emoji)"
-                                                    class="flex items-center gap-1 bg-white dark:bg-gray-700 border border-slate-100 dark:border-gray-600 hover:border-emerald-200 rounded-full px-2 py-0.5 text-xs shadow-sm"
-                                                    :title="(reaction.users || []).join(', ')">
-                                                <span x-text="reaction.emoji"></span>
-                                                <span class="text-gray-600 dark:text-gray-300" x-text="reaction.count"></span>
-                                            </button>
-                                        </template>
-                                    </div>
-                                </div>
-
-                                {{-- Hover action bar --}}
-                                <div class="hidden group-hover:flex items-center gap-1 self-center flex-shrink-0">
-                                    <div class="relative" x-data="{ emojiOpen: false }">
-                                        <button @click="emojiOpen = !emojiOpen" title="React"
-                                                class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 shadow-sm flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        </button>
-                                        <div x-show="emojiOpen" @click.away="emojiOpen = false" x-transition
-                                             class="absolute bottom-9 left-0 bg-white dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-xl p-2 shadow-xl z-30 flex flex-wrap gap-1 w-44" style="display:none">
-                                            <template x-for="emoji in ['👍','❤️','😂','😮','😢','🔥','✅','👏','🎉','💯']">
-                                                <button @click="toggleReaction(message, emoji); emojiOpen = false" class="text-lg p-1 hover:bg-slate-50 dark:hover:bg-gray-700 rounded-lg" x-text="emoji"></button>
-                                            </template>
-                                        </div>
-                                    </div>
-                                    <button @click="replyTo = message" title="Reply"
-                                            class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 shadow-sm flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                            {{-- Reactions --}}
+                            <div x-show="(message.reactions || []).length > 0" class="flex flex-wrap gap-1 mt-1 px-1">
+                                <template x-for="reaction in (message.reactions || [])" :key="reaction.emoji">
+                                    <button @click="toggleReaction(message, reaction.emoji)"
+                                            class="flex items-center gap-1 bg-white dark:bg-gray-700 border border-slate-100 dark:border-gray-600 hover:border-emerald-300 rounded-full px-2 py-0.5 text-xs shadow-sm transition-colors"
+                                            :title="(reaction.users || []).join(', ')">
+                                        <span x-text="reaction.emoji"></span>
+                                        <span class="text-gray-600 dark:text-gray-300" x-text="reaction.count"></span>
                                     </button>
-                                    <button x-show="message.user_id == currentUserId" @click="startEdit(message)" title="Edit"
-                                            class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 shadow-sm flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                    </button>
-                                    <button @click="openForwardModal(message)" title="Forward"
-                                            class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 shadow-sm flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-                                    </button>
-                                    <button @click="toggleBookmark(message)" title="Bookmark"
-                                            class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 shadow-sm flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
-                                    </button>
-                                    <button x-show="message.user_id == currentUserId || {{ auth()->user()->isAdmin() ? 'true' : 'false' }}"
-                                            @click="deleteMessage(message)" title="Delete"
-                                            class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 shadow-sm flex items-center justify-center text-gray-500 hover:text-red-500 hover:border-red-200 transition-colors">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        {{-- Hover actions --}}
+                        <div class="hidden group-hover:flex items-center gap-1 self-center flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div class="relative" x-data="{ emojiOpen: false }">
+                                <button @click="emojiOpen = !emojiOpen" title="React"
+                                        class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 shadow-sm flex items-center justify-center text-gray-500 hover:text-emerald-600 transition-colors">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </button>
+                                <div x-show="emojiOpen" @click.away="emojiOpen = false" x-transition
+                                     class="absolute bottom-9 bg-white dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-xl p-2 shadow-xl z-30 flex flex-wrap gap-1 w-44"
+                                     :class="message.user_id == currentUserId ? 'right-0' : 'left-0'"
+                                     style="display:none">
+                                    <template x-for="emoji in ['👍','❤️','😂','😮','😢','🔥','✅','👏','🎉','💯']">
+                                        <button @click="toggleReaction(message, emoji); emojiOpen = false"
+                                                class="text-lg p-1 hover:bg-slate-50 dark:hover:bg-gray-700 rounded-lg" x-text="emoji"></button>
+                                    </template>
                                 </div>
                             </div>
-                        </template>
+                            <button @click="replyTo = message" title="Reply"
+                                    class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 shadow-sm flex items-center justify-center text-gray-500 hover:text-emerald-600 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                            </button>
+                            <button x-show="message.user_id == currentUserId" @click="startEdit(message)" title="Edit"
+                                    class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 shadow-sm flex items-center justify-center text-gray-500 hover:text-emerald-600 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </button>
+                            <button @click="toggleBookmark(message)" title="Bookmark"
+                                    class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 shadow-sm flex items-center justify-center text-gray-500 hover:text-emerald-600 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+                            </button>
+                            <button x-show="message.user_id == currentUserId || {{ auth()->user()->isAdmin() ? 'true' : 'false' }}"
+                                    @click="deleteMessage(message)" title="Delete"
+                                    class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 shadow-sm flex items-center justify-center text-gray-500 hover:text-red-500 hover:border-red-200 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
                     </div>
-                </template>
-            </div>
-        </template>
 
-                {{-- Typing indicator --}}
-                <div x-show="typingUsers.length > 0" class="flex items-center gap-2 px-4 pb-2 pt-1">
-                    <div class="flex gap-1 items-center">
-                        <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-                        <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-                        <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
-                    </div>
-                    <span class="text-xs text-gray-400" x-text="typingUsers.join(', ') + ' is typing...'"></span>
                 </div>
+            </template>
+        </div>
+
+        {{-- Typing indicator --}}
+        <div x-show="typingUsers.length > 0" class="flex items-center gap-2 px-2 pb-2 pt-3">
+            <div class="flex gap-1 items-center">
+                <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0ms"></span>
+                <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay:150ms"></span>
+                <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay:300ms"></span>
             </div>
-        </template>
+            <span class="text-xs text-gray-400" x-text="typingUsers.join(', ') + ' is typing...'"></span>
+        </div>
     </div>
 
     {{-- Reply preview --}}
