@@ -59,7 +59,14 @@
     $isAdmin = $conversation->isGroup() && $participant?->role === 'admin';
 @endphp
 
-<div class="flex flex-col h-full" x-data="chatConversation({{ $conversation->id }}, {{ auth()->id() }}, {{ json_encode($messages) }})">
+<script>
+    window.__chatInit = {
+        conversationId: {{ $conversation->id }},
+        currentUserId: {{ auth()->id() }},
+        messages: {!! json_encode($messages, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
+    };
+</script>
+<div class="flex flex-col h-full" x-data="chatConversation(window.__chatInit.conversationId, window.__chatInit.currentUserId, window.__chatInit.messages)">
     {{-- Chat header --}}
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div class="flex items-center gap-3">

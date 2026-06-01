@@ -144,6 +144,7 @@ Alpine.data('teamflowApp', () => ({
 
 Alpine.data('chatConversation', (conversationId, currentUserId, initialMessages) => ({
     messages: Array.isArray(initialMessages) ? initialMessages : [],
+    loading: false,
     newMessage: '',
     typingUsers: [],
     _typingTimeout: null,
