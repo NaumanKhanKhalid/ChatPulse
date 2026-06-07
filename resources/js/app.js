@@ -165,6 +165,10 @@ Alpine.data('chatConversation', (conversationId, currentUserId, initialMessages)
     exportFormat: 'csv',
     exportFrom: '',
     exportTo: '',
+    firstUnreadId: null,
+
+    get typing() { return this.typingUsers.length > 0; },
+    get typingName() { return this.typingUsers[0] ?? ''; },
 
     init() {
         this.$nextTick(() => this.scrollToBottom());
@@ -218,13 +222,68 @@ Alpine.data('chatConversation', (conversationId, currentUserId, initialMessages)
             });
     },
 
-    isSameUserAsPrev(index) {
+    isGrouped(index) {
         if (index === 0) return false;
         const prev = this.messages[index - 1];
         const curr = this.messages[index];
         if (!prev || !curr || prev.user_id !== curr.user_id) return false;
         return (new Date(curr.created_at) - new Date(prev.created_at)) < 300000;
     },
+
+    isSameUserAsPrev(index) { return this.isGrouped(index); },
+
+    shouldShowDayDivider(index) {
+        if (index === 0) return true;
+        const prev = this.messages[index - 1];
+        const curr = this.messages[index];
+        if (!prev || !curr) return false;
+        const pDate = new Date(prev.created_at).toDateString();
+        const cDate = new Date(curr.created_at).toDateString();
+        return pDate !== cDate;
+    },
+
+    getDayLabel(message) {
+        if (!message?.created_at) return '';
+        const d = new Date(message.created_at);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (d.toDateString() === today.toDateString()) return 'Today';
+        if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+        return d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+    },
+
+    setReply(message) { this.replyTo = message; },
+
+    openReactionPicker(messageId, event) {
+        const emojis = ['👍','🔥','🎉','❤️','😂','👀','✅','🙏'];
+        const msg = this.messages.find(m => m.id === messageId);
+        if (!msg) return;
+        const existing = document.getElementById('cp-emoji-pop');
+        if (existing) existing.remove();
+        const pop = document.createElement('div');
+        pop.id = 'cp-emoji-pop';
+        pop.className = 'emoji-pop';
+        pop.style.cssText = `position:fixed;z-index:100;top:${event.clientY - 60}px;left:${Math.min(event.clientX - 80, window.innerWidth - 280)}px;`;
+        emojis.forEach(e => {
+            const btn = document.createElement('button');
+            btn.textContent = e;
+            btn.style.cssText = 'width:34px;height:34px;border-radius:8px;font-size:18px;display:grid;place-items:center;cursor:pointer;border:none;background:none;';
+            btn.onmouseenter = () => { btn.style.background = 'var(--hover)'; btn.style.transform = 'scale(1.2)'; };
+            btn.onmouseleave = () => { btn.style.background = ''; btn.style.transform = ''; };
+            btn.onclick = () => { this.toggleReaction(msg, e); pop.remove(); };
+            pop.appendChild(btn);
+        });
+        document.body.appendChild(pop);
+        const close = (ev) => { if (!pop.contains(ev.target)) { pop.remove(); document.removeEventListener('click', close); } };
+        setTimeout(() => document.addEventListener('click', close), 10);
+    },
+
+    handleScroll(event) {
+        // Could load more messages when scrolled to top
+    },
+
+    onTyping() { this.handleTyping(); },
 
     formatTime(iso) {
         if (!iso) return '';
@@ -324,11 +383,12 @@ Alpine.data('chatConversation', (conversationId, currentUserId, initialMessages)
         } catch (e) { console.error(e); }
     },
 
-    async deleteMessage(msg) {
+    async deleteMessage(msgOrId) {
+        const id = typeof msgOrId === 'object' ? msgOrId.id : msgOrId;
         if (!confirm('Delete this message?')) return;
         try {
-            await apiFetch(`/messages/${msg.id}`, { method: 'DELETE' });
-            this.messages = this.messages.filter(m => m.id !== msg.id);
+            await apiFetch(`/messages/${id}`, { method: 'DELETE' });
+            this.messages = this.messages.filter(m => m.id !== id);
         } catch (e) { console.error(e); }
     },
 
