@@ -63,10 +63,10 @@
         <svg x-show="darkMode" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
     </button>
 
-    {{-- Avatar --}}
-    <div class="rail-ava" style="margin-bottom:4px;">
+    {{-- Avatar + logout popup --}}
+    <div class="rail-ava" style="margin-bottom:4px;position:relative;" x-data="{ open: false }" @click.away="open = false">
         @php $u = auth()->user(); $initials = collect(explode(' ', $u->name))->map(fn($w) => strtoupper(substr($w,0,1)))->take(2)->join(''); @endphp
-        <button class="rail-btn" title="{{ $u->name }}">
+        <button class="rail-btn" @click="open = !open" title="{{ $u->name }}">
             @if($u->avatar_url)
             <img src="{{ $u->avatar_url }}" alt="{{ $u->name }}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;">
             @else
@@ -74,5 +74,27 @@
             @endif
         </button>
         <span class="pres" style="background:var(--online);"></span>
+
+        {{-- Popup menu --}}
+        <div x-show="open" x-transition style="display:none;position:absolute;bottom:0;left:52px;min-width:200px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:0 16px 40px -12px rgba(0,0,0,.35);z-index:200;">
+            <div style="padding:10px 12px 8px;border-bottom:1px solid var(--line2);margin-bottom:4px;">
+                <p style="font-size:13.5px;font-weight:800;color:var(--text);margin:0;">{{ $u->name }}</p>
+                <p style="font-size:12px;color:var(--text3);margin:2px 0 0;">{{ $u->email }}</p>
+            </div>
+            @if(!$u->is_guest)
+            <a href="{{ route('settings.index') }}" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--text2);text-decoration:none;" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.5v2M12 18.5v2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M3.5 12h2M18.5 12h2M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                Settings
+            </a>
+            @endif
+            <div style="height:1px;background:var(--line);margin:4px 0;"></div>
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" style="display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;border-radius:9px;font-size:13.5px;font-weight:600;color:#ef4444;background:none;border:none;cursor:pointer;font-family:inherit;text-align:left;" onmouseover="this.style.background='rgba(239,68,68,.08)'" onmouseout="this.style.background=''">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Sign out
+                </button>
+            </form>
+        </div>
     </div>
 </nav>
