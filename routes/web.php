@@ -111,6 +111,7 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
     Route::delete('/scheduled/{message}', [ScheduledMessageController::class, 'destroy'])->name('scheduled.destroy');
 
     // Calls
+    Route::get('/calls', [CallController::class, 'index'])->name('calls.index');
     Route::post('/conversations/{conversation}/call', [CallController::class, 'initiate'])->name('calls.initiate');
     Route::post('/calls/{call}/answer', [CallController::class, 'answer'])->name('calls.answer');
     Route::post('/calls/{call}/decline', [CallController::class, 'decline'])->name('calls.decline');

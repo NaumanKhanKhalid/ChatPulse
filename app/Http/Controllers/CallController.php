@@ -10,9 +10,22 @@ use App\Models\CallParticipant;
 use App\Models\Conversation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class CallController extends Controller
 {
+    public function index(): View
+    {
+        $user = auth()->user();
+        $calls = Call::whereHas('participants', fn($q) => $q->where('user_id', $user->id))
+            ->orWhere('initiated_by', $user->id)
+            ->with(['participants', 'conversation'])
+            ->orderByDesc('started_at')
+            ->limit(50)
+            ->get();
+        return view('calls.index', compact('calls'));
+    }
+
     public function initiate(Request $request, Conversation $conversation): JsonResponse
     {
         $request->validate(['type' => ['required','in:audio,video']]);

@@ -82,7 +82,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .rail-ava .pres { position: absolute; bottom: -1px; right: -1px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--rail); }
 
 /* ============ CONVERSATION LIST ============ */
-#list { width: 300px; flex-shrink: 0; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+#list { width: 300px; flex-shrink: 0; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
 .list-head { padding: 18px 16px 10px; background: var(--side); position: relative; z-index: 2; }
 .list-title-row { display: flex; align-items: center; justify-content: space-between; }
 .list-title { font-size: 21px; font-weight: 800; letter-spacing: -.02em; margin: 0; color: var(--text); }
@@ -265,6 +265,22 @@ html.dark .rb-name { color: #6ee7b7; }
 .estate h3 { font-size: 18px; font-weight: 800; color: var(--text2); margin: 0 0 7px; }
 .estate p { font-size: 14px; line-height: 1.55; margin: 0; max-width: 330px; }
 .estate.welcome .estate-ic { width: 96px; height: 96px; border-radius: 28px; background: linear-gradient(135deg,#10b981,#0891b2); color: #fff; box-shadow: 0 18px 40px -16px rgba(16,185,129,.7); }
+
+/* call log */
+.call-row { display: flex; align-items: center; gap: 13px; padding: 9px 10px; border-radius: 13px; }
+.call-row:hover { background: var(--hover); }
+.call-info { flex: 1; min-width: 0; }
+.cl-name { font-size: 14px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.cl-name.missed { color: var(--busy); }
+.call-grp { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--primary-dark); background: var(--primary-light); padding: 1px 6px; border-radius: 99px; }
+.call-meta { font-size: 12px; color: var(--text3); margin-top: 3px; display: flex; align-items: center; gap: 5px; }
+.call-dir { display: inline-flex; flex-shrink: 0; }
+.call-dir.in { color: var(--primary); }
+.call-dir.out { color: var(--text3); }
+.call-dir.missed { color: var(--busy); }
+.call-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.call-btn { width: 36px; height: 36px; border-radius: 10px; background: var(--input); color: var(--text2); display: grid; place-items: center; text-decoration: none; }
+.call-btn:hover { background: var(--primary-light); color: var(--primary-dark); }
 
 /* skeletons */
 .sk { position: relative; overflow: hidden; background: var(--input); border-radius: 8px; }

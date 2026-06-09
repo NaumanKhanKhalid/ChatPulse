@@ -16,7 +16,11 @@ class ConversationController extends Controller
     {
         $user = auth()->user();
         $conversations = $this->service->getUserConversations($user);
-        return view('chat.index', compact('conversations', 'user'));
+        $allUsers = User::where('id', '!=', $user->id)
+            ->where('is_guest', false)
+            ->orderBy('name')
+            ->get();
+        return view('chat.index', compact('conversations', 'user', 'allUsers'));
     }
 
     public function show(Conversation $conversation): View

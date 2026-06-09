@@ -17,28 +17,13 @@
         @endif
     </a>
 
-    {{-- Groups --}}
-    <a href="{{ route('groups.explore') }}" class="rail-btn {{ request()->routeIs('groups.*') ? 'active' : '' }}" title="Groups">
-        <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" stroke-width="1.8"/></svg>
-    </a>
-
-    {{-- People --}}
-    <a href="{{ route('people.index') }}" class="rail-btn {{ request()->routeIs('people.*') ? 'active' : '' }}" title="People">
-        <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke="currentColor" stroke-width="1.8"/></svg>
-    </a>
-
-    {{-- Notifications --}}
-    <a href="{{ route('notifications.index') }}" class="rail-btn {{ request()->routeIs('notifications.*') ? 'active' : '' }}" title="Notifications">
-        <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke="currentColor" stroke-width="1.8"/></svg>
-        @php $notifCount = 0; try { $notifCount = auth()->user()->unreadNotificationsCount(); } catch(\Exception $e) {} @endphp
-        @if($notifCount > 0)
-        <span class="rb-badge">{{ $notifCount > 9 ? '9+' : $notifCount }}</span>
+    {{-- Calls --}}
+    <a href="{{ route('calls.index') }}" class="rail-btn {{ request()->routeIs('calls.index') ? 'active' : '' }}" title="Calls">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M6.2 4.5 8 4l1.6 3.4-1.5 1.3a11 11 0 0 0 4.7 4.7l1.3-1.5L17.5 15l-.5 1.8c-.2.7-.9 1.1-1.6 1A14 14 0 0 1 4.2 6.6c-.1-.7.3-1.4 1-1.6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        @php $missedCalls = 0; try { $missedCalls = auth()->user()->calls()->where('status','missed')->whereDoesntHave('participants',fn($q)=>$q->where('user_id',auth()->id()))->count(); } catch(\Exception $e) {} @endphp
+        @if($missedCalls > 0)
+        <span class="rb-badge">{{ $missedCalls > 9 ? '9+' : $missedCalls }}</span>
         @endif
-    </a>
-
-    {{-- Bookmarks --}}
-    <a href="{{ route('bookmarks.index') }}" class="rail-btn {{ request()->routeIs('bookmarks.*') ? 'active' : '' }}" title="Bookmarks">
-        <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
     </a>
 
     <div class="rail-div"></div>
