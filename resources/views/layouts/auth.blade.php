@@ -38,7 +38,7 @@
   @media (prefers-reduced-motion: no-preference) {
     .screen { animation: panelIn .35s cubic-bezier(.2,.8,.2,1); }
   }
-  @keyframes panelIn { from { transform: translateY(9px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes panelIn { from { transform: translateY(9px); } to { transform: none; } }
 
   input::placeholder { color: #aab2ad; }
   .cbx:checked + .cbx-box { border-color: #10b981; background: #10b981; }

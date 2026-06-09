@@ -2,6 +2,34 @@
 @import "tailwindcss";
 
 /* ============================================================
+   Tailwind v4 Theme — custom tokens (replaces tailwind.config.js)
+   ============================================================ */
+@theme {
+  --font-family-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  --color-primary:       #10b981;
+  --color-primary-hover: #059669;
+  --color-primary-light: #d1fae5;
+  --color-primary-dark:  #065f46;
+
+  --color-ink-900: #0c1411;
+  --color-ink-700: #33403b;
+  --color-ink-500: #5d6b65;
+  --color-ink-400: #8a958f;
+
+  --color-line:   #e6e9e7;
+  --color-online: #10b981;
+  --color-busy:   #ef4444;
+  --color-away:   #f59e0b;
+  --color-guest:  #f59e0b;
+  --color-rail:   #111827;
+
+  --shadow-btn:  0 8px 20px -8px rgba(16,185,129,0.7);
+  --shadow-glass: 0 20px 60px -20px rgba(0,0,0,0.45);
+  --shadow-form: 0 1px 2px rgba(12,20,17,0.04), 0 24px 48px -24px rgba(12,20,17,0.18);
+}
+
+/* ============================================================
    ChatPulse Design System — CSS Variables
    ============================================================ */
 :root {
