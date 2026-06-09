@@ -5,13 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="csrf-token" content="{{ csrf_token() }}" />
 <title>ChatPulse — @yield('title', 'Sign in')</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-@vite(['resources/css/app.css', 'resources/js/app.js'])
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'] },
+        colors: {
+          primary: { DEFAULT: '#10b981', hover: '#059669', light: '#d1fae5', dark: '#065f46' },
+          ink: { 900: '#0c1411', 700: '#33403b', 500: '#5d6b65', 400: '#8a958f' },
+          line: '#e6e9e7',
+          online: '#10b981', busy: '#ef4444', away: '#f59e0b', guest: '#f59e0b',
+        },
+        boxShadow: {
+          form: '0 1px 2px rgba(12,20,17,0.04), 0 24px 48px -24px rgba(12,20,17,0.18)',
+          glass: '0 20px 60px -20px rgba(0,0,0,0.45)',
+          btn: '0 8px 20px -8px rgba(16,185,129,0.7)',
+        },
+      },
+    },
+  };
+</script>
 <style>
-  html, body { height: 100%; margin: 0; overflow: hidden; }
-  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: #fff; color: #0c1411; -webkit-font-smoothing: antialiased; }
+  html, body { height: 100%; margin: 0; }
+  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 
   .brand-mesh {
     background-color: #065f46;
@@ -22,9 +43,8 @@
       radial-gradient(at 25% 85%, #0f766e 0px, transparent 50%),
       radial-gradient(at 50% 50%, #059669 0px, transparent 60%);
   }
-  .grain {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
-  }
+  .grain { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E"); }
+
   .float-card { animation: floaty 6s ease-in-out infinite; }
   @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
   .float-card.delay { animation-delay: -3s; }
@@ -32,7 +52,7 @@
   .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; display: inline-block; animation: blink 1.4s infinite both; }
   .dot:nth-child(2) { animation-delay: .2s; }
   .dot:nth-child(3) { animation-delay: .4s; }
-  @keyframes blink { 0%,60%,100% { opacity:.25; transform:translateY(0); } 30% { opacity:1; transform:translateY(-2px); } }
+  @keyframes blink { 0%,60%,100% { opacity:.25; transform: translateY(0); } 30% { opacity:1; transform: translateY(-2px); } }
 
   .screen { opacity: 1; }
   @media (prefers-reduced-motion: no-preference) {
@@ -44,12 +64,10 @@
   .cbx:checked + .cbx-box { border-color: #10b981; background: #10b981; }
   .cbx:checked + .cbx-box svg { opacity: 1; }
 
-  /* error states */
-  .field-wrap.has-error { border-color: #ef4444 !important; }
   .field-err { color: #ef4444; font-size: 12px; margin-top: 6px; display: flex; align-items: center; gap: 5px; }
 </style>
 </head>
-<body>
+<body class="bg-white text-ink-900 antialiased overflow-hidden">
 
 <div class="flex h-screen w-screen overflow-hidden">
 
@@ -118,7 +136,7 @@
         </div>
         <span class="text-[17px] font-extrabold tracking-tight">ChatPulse</span>
       </div>
-      <div class="ml-auto flex items-center gap-3 text-[13.5px]" id="headerSwitch">
+      <div class="ml-auto flex items-center gap-3 text-[13.5px]">
         @yield('header-switch')
       </div>
     </header>
@@ -137,7 +155,7 @@
 
         {{-- Flash messages --}}
         @if(session('error'))
-        <div class="mb-6 flex items-center gap-2.5 rounded-xl border border-busy/30 bg-busy/8 px-4 py-3 text-[13.5px] font-semibold text-busy">
+        <div class="mb-6 flex items-center gap-2.5 rounded-xl border border-busy/30 bg-red-50 px-4 py-3 text-[13.5px] font-semibold text-busy">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           {{ session('error') }}
         </div>
@@ -146,6 +164,12 @@
         <div class="mb-6 flex items-center gap-2.5 rounded-xl border border-primary/30 bg-primary-light px-4 py-3 text-[13.5px] font-semibold text-primary-dark">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4 10-10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ session('success') }}
+        </div>
+        @endif
+        @if(session('status'))
+        <div class="mb-6 flex items-center gap-2.5 rounded-xl border border-primary/30 bg-primary-light px-4 py-3 text-[13.5px] font-semibold text-primary-dark">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4 10-10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {{ session('status') }}
         </div>
         @endif
 
@@ -177,6 +201,8 @@ function cpToast(msg, err) {
   setTimeout(() => { t.remove(); }, 2600);
 }
 </script>
+
+@stack('scripts')
 
 </body>
 </html>
