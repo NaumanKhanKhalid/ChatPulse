@@ -18,7 +18,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         RateLimiter::for('guest-login', fn(Request $req) =>
-            Limit::perHour(3)->by($req->ip())
+            Limit::perHour(30)->by($req->ip())
         );
 
         RateLimiter::for('messages', fn(Request $req) =>
