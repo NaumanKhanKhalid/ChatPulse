@@ -10,71 +10,94 @@ class ConversationSeeder extends Seeder
 {
     public function run(): void
     {
-        $users = User::all()->keyBy('username');
+        $u = User::all()->keyBy('username');
 
-        // Public groups
-        $this->createGroup('General', 'General team discussion', false, $users['admin'], [
-            $users['sara'], $users['ahmed'], $users['fatima'], $users['usman'],
-            $users['ali'], $users['maria'], $users['zara'], $users['omar'],
-        ]);
+        // ── Public groups (matching prototype) ──────────────────────────
+        $this->group('Northwind Studio',
+            'Product & design team workspace. Ship fast, iterate often.',
+            false, $u['sara_karim'],
+            [$u['admin'], $u['ahmed_raza'], $u['usman_tariq'], $u['ali_hassan'], $u['fatima_ali'], $u['zara_sheikh']]);
 
-        $this->createGroup('Engineering', 'Backend and frontend engineering team', false, $users['ahmed'], [
-            $users['admin'], $users['usman'], $users['ali'], $users['bilal'],
-        ]);
+        $this->group('Design Critique',
+            'Weekly crit — share work, get feedback. No sugarcoating.',
+            false, $u['sara_karim'],
+            [$u['ahmed_raza'], $u['ali_hassan'], $u['zara_sheikh'], $u['hina_malik']]);
 
-        $this->createGroup('Design', 'UI/UX design discussions', false, $users['maria'], [
-            $users['sara'], $users['zara'], $users['fatima'],
-        ]);
+        $this->group('Frontend Guild',
+            'Alpine, Tailwind, Blade & all things UI. Pixel perfection club.',
+            false, $u['hina_malik'],
+            [$u['ahmed_raza'], $u['sara_karim'], $u['zara_sheikh'], $u['ali_hassan'], $u['usman_tariq']]);
 
-        // Private groups
-        $this->createGroup('Leadership', 'Management channel', true, $users['admin'], [
-            $users['sara'], $users['ahmed'],
-        ]);
+        $this->group('Laravel Devs',
+            'Backend patterns, queues, Reverb & more. The PHP way.',
+            false, $u['usman_tariq'],
+            [$u['admin'], $u['ahmed_raza'], $u['omar_farooq'], $u['fatima_ali']]);
 
-        $this->createGroup('QA Team', 'Quality assurance', true, $users['hina'], [
-            $users['omar'], $users['bilal'],
-        ]);
+        $this->group('Weekend Crew',
+            'Off-topic — trails, coffee, good times. No work talk allowed.',
+            false, $u['ali_hassan'],
+            [$u['sara_karim'], $u['ahmed_raza'], $u['zara_sheikh'], $u['hina_malik'], $u['omar_farooq']]);
 
-        // DMs
-        $dmPairs = [
-            [$users['admin'], $users['sara']],
-            [$users['admin'], $users['ahmed']],
-            [$users['sara'], $users['fatima']],
-            [$users['ahmed'], $users['usman']],
-            [$users['ali'], $users['maria']],
+        // ── Private groups ───────────────────────────────────────────────
+        $this->group('Product Leads',
+            'Roadmap, priorities, launches. Keep it confidential.',
+            true, $u['admin'],
+            [$u['sara_karim'], $u['ahmed_raza'], $u['usman_tariq']]);
+
+        // ── Direct messages (everyone with admin so login works well) ───
+        $dms = [
+            [$u['admin'], $u['sara_karim']],
+            [$u['admin'], $u['ahmed_raza']],
+            [$u['admin'], $u['usman_tariq']],
+            [$u['admin'], $u['ali_hassan']],
+            [$u['sara_karim'], $u['ahmed_raza']],
+            [$u['sara_karim'], $u['zara_sheikh']],
+            [$u['ahmed_raza'], $u['usman_tariq']],
+            [$u['hina_malik'], $u['omar_farooq']],
         ];
 
-        foreach ($dmPairs as [$a, $b]) {
+        foreach ($dms as [$a, $b]) {
             $conv = Conversation::create([
                 'type' => 'direct',
                 'is_private' => true,
                 'created_by' => $a->id,
-                'last_activity_at' => now()->subMinutes(rand(1, 1440)),
+                'last_activity_at' => now()->subMinutes(rand(2, 1200)),
             ]);
-            ConversationParticipant::create(['conversation_id'=>$conv->id,'user_id'=>$a->id,'role'=>'member','joined_at'=>now()]);
-            ConversationParticipant::create(['conversation_id'=>$conv->id,'user_id'=>$b->id,'role'=>'member','joined_at'=>now()]);
+            foreach ([$a, $b] as $member) {
+                ConversationParticipant::create([
+                    'conversation_id' => $conv->id,
+                    'user_id'         => $member->id,
+                    'role'            => 'member',
+                    'joined_at'       => now(),
+                ]);
+            }
         }
     }
 
-    private function createGroup(string $name, string $description, bool $private, User $creator, array $members): Conversation
+    private function group(string $name, string $desc, bool $private, User $creator, array $members): Conversation
     {
         $conv = Conversation::create([
-            'type' => 'group',
-            'name' => $name,
-            'description' => $description,
-            'is_private' => $private,
-            'created_by' => $creator->id,
-            'last_activity_at' => now()->subMinutes(rand(1, 720)),
+            'type'             => 'group',
+            'name'             => $name,
+            'description'      => $desc,
+            'is_private'       => $private,
+            'created_by'       => $creator->id,
+            'last_activity_at' => now()->subMinutes(rand(2, 480)),
         ]);
 
-        ConversationParticipant::create(['conversation_id'=>$conv->id,'user_id'=>$creator->id,'role'=>'admin','joined_at'=>now()]);
+        ConversationParticipant::create([
+            'conversation_id' => $conv->id,
+            'user_id'         => $creator->id,
+            'role'            => 'admin',
+            'joined_at'       => now(),
+        ]);
 
         foreach ($members as $member) {
             ConversationParticipant::create([
                 'conversation_id' => $conv->id,
-                'user_id' => $member->id,
-                'role' => 'member',
-                'joined_at' => now(),
+                'user_id'         => $member->id,
+                'role'            => 'member',
+                'joined_at'       => now(),
             ]);
         }
 
