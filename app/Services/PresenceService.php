@@ -14,7 +14,11 @@ class PresenceService
         Cache::put("user_online:{$user->id}", true, now()->addMinutes(2));
 
         if ($wasOffline) {
-            broadcast(new UserPresenceUpdated($user->id, true, now()));
+            try {
+                broadcast(new UserPresenceUpdated($user->id, true, now()));
+            } catch (\Throwable $e) {
+                // Reverb may not be running; presence update is non-critical
+            }
         }
     }
 
@@ -22,7 +26,11 @@ class PresenceService
     {
         $user->update(['is_online' => false, 'last_seen_at' => now()]);
         Cache::forget("user_online:{$user->id}");
-        broadcast(new UserPresenceUpdated($user->id, false, now()));
+        try {
+            broadcast(new UserPresenceUpdated($user->id, false, now()));
+        } catch (\Throwable $e) {
+            //
+        }
     }
 
     public function heartbeat(User $user): void
@@ -32,7 +40,11 @@ class PresenceService
 
         if ($wasOffline) {
             $user->update(['is_online' => true, 'last_seen_at' => now()]);
-            broadcast(new UserPresenceUpdated($user->id, true, now()));
+            try {
+                broadcast(new UserPresenceUpdated($user->id, true, now()));
+            } catch (\Throwable $e) {
+                //
+            }
         } else {
             $user->update(['last_seen_at' => now()]);
         }
