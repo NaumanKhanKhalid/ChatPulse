@@ -3,74 +3,65 @@
 
 @section('list-panel')
 
-{{-- New Message Modal --}}
-<div id="newChatOverlay" onclick="if(event.target===this)closeNewChat()"
-     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:500;align-items:center;justify-content:center;">
-    <div style="background:var(--card,#1a2420);border:1px solid var(--line);border-radius:20px;width:100%;max-width:460px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 32px 80px -12px rgba(0,0,0,.6);margin:0 16px;">
+{{-- New Message Modal — matches prototype chatpulsemodals.js openNewChat() exactly --}}
+<div id="newChatOverlay" class="cp-overlay" onclick="if(event.target===this)closeNewChat()" style="display:none;">
+    <div class="cp-modal">
 
-        {{-- Header --}}
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:22px 22px 16px;">
-            <h2 style="font-size:18px;font-weight:800;color:var(--text);margin:0;">New message</h2>
-            <button onclick="closeNewChat()" style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--hover);border:none;cursor:pointer;color:var(--text2);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <div class="cp-head">
+            <span class="cp-title">New message</span>
+            <button class="cp-x" onclick="closeNewChat()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </button>
         </div>
 
-        {{-- Search --}}
-        <div style="padding:0 16px 14px;">
-            <div style="display:flex;align-items:center;gap:10px;background:var(--hover);border:1.5px solid var(--line);border-radius:12px;padding:0 14px;height:46px;transition:.15s;" onfocusin="this.style.borderColor='var(--primary)'" onfocusout="this.style.borderColor='var(--line)'">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="color:var(--text3);flex-shrink:0;"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                <input id="peopleSearch" placeholder="Search people by name or @username…" oninput="filterPeople(this.value)"
-                       style="flex:1;background:none;border:none;outline:none;font-size:14px;color:var(--text);font-family:inherit;" />
+        <div class="cp-body">
+            <input class="cp-input" id="peopleSearch" placeholder="Search people by name or @username…" oninput="filterPeople(this.value)" style="margin-bottom:14px;" />
+
+            <button class="nc-group" onclick="window.location='{{ route('groups.create') }}'">
+                <span class="nc-group-ic">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="9" r="3.2" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 6.5a3 3 0 0 1 0 5.8M17.5 19a5.5 5.5 0 0 0-2.3-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </span>
+                <span class="nc-group-tx">
+                    <span class="nc-group-t">New group</span>
+                    <span class="nc-group-s">Start a conversation with multiple people</span>
+                </span>
+                <svg class="nc-go" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+
+            <span class="cp-label" style="margin:4px 0 8px;">People</span>
+
+            <div id="peopleList" style="max-height:320px;overflow-y:auto;margin:0 -6px;">
+                @foreach($allUsers as $person)
+                @php
+                    $pInitials = collect(explode(' ', $person->name))->map(fn($w) => strtoupper(substr($w,0,1)))->take(2)->join('');
+                    $colors = [['#818cf8','#7c3aed'],['#7dd3fc','#2563eb'],['#c4b5fd','#7c3aed'],['#6ee7b7','#0d9488'],['#fcd34d','#ea580c'],['#f0abfc','#a21caf'],['#fda4af','#e11d48']];
+                    $cp = $colors[$person->id % count($colors)];
+                    $statusText = $person->is_online ? 'Active now' : ($person->last_seen_at ? 'last seen ' . $person->last_seen_at->diffForHumans() : 'offline');
+                    $presColor = $person->is_online ? 'var(--online)' : ($person->status_type === 'busy' ? 'var(--busy)' : 'var(--away)');
+                @endphp
+                <form method="POST" action="{{ route('people.dm', $person) }}" style="margin:0;" data-pname="{{ strtolower($person->name . ' ' . $person->username) }}">
+                    @csrf
+                    <button type="submit" class="nc-item">
+                        <span class="nc-avwrap">
+                            @if($person->avatar_url)
+                            <img src="{{ $person->avatar_url }}" alt="{{ $person->name }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;display:block;">
+                            @else
+                            <div class="avatar" style="width:40px;height:40px;background:linear-gradient(135deg,{{ $cp[0] }},{{ $cp[1] }});font-size:14px;">{{ $pInitials }}</div>
+                            @endif
+                            @if($person->is_online)
+                            <span class="nc-pres" style="background:{{ $presColor }};"></span>
+                            @endif
+                        </span>
+                        <span class="nc-info">
+                            <span class="nc-name">{{ $person->name }}</span>
+                            <span class="nc-sub">@{{ $person->username ?? strtolower(str_replace(' ','_',$person->name)) }} · {{ $statusText }}</span>
+                        </span>
+                        <svg class="nc-go" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </form>
+                @endforeach
+                <div class="nc-empty" id="ncEmpty" style="display:none;">No people match that search.</div>
             </div>
-        </div>
-
-        {{-- New Group row --}}
-        <div style="padding:0 16px 6px;">
-            <a href="{{ route('groups.create') }}" style="display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;text-decoration:none;transition:.12s;" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
-                <div style="width:44px;height:44px;border-radius:50%;background:rgba(16,185,129,.15);display:grid;place-items:center;flex-shrink:0;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="7" r="3" stroke="#10b981" stroke-width="1.8"/><circle cx="17" cy="9" r="2.5" stroke="#10b981" stroke-width="1.8"/><path d="M2 19c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="#10b981" stroke-width="1.8" stroke-linecap="round"/><path d="M19 14c1.7.8 3 2.3 3 4" stroke="#10b981" stroke-width="1.8" stroke-linecap="round"/></svg>
-                </div>
-                <div style="flex:1;">
-                    <div style="font-size:14.5px;font-weight:700;color:var(--text);">New group</div>
-                    <div style="font-size:12.5px;color:var(--text3);margin-top:1px;">Start a conversation with multiple people</div>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:var(--text3);"><path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </a>
-        </div>
-
-        {{-- People list --}}
-        <div style="padding:8px 16px 4px;">
-            <p style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin:0 0 6px 4px;">People</p>
-        </div>
-        <div id="peopleList" style="flex:1;overflow-y:auto;padding:0 10px 14px;">
-            @foreach($allUsers as $person)
-            @php
-                $pInitials = collect(explode(' ', $person->name))->map(fn($w) => strtoupper(substr($w,0,1)))->take(2)->join('');
-                $colors = [['#818cf8','#7c3aed'],['#7dd3fc','#2563eb'],['#c4b5fd','#7c3aed'],['#6ee7b7','#0d9488'],['#fcd34d','#ea580c'],['#f0abfc','#a21caf'],['#fda4af','#e11d48']];
-                $cp = $colors[$person->id % count($colors)];
-                $statusText = $person->is_online ? 'Active now' : ($person->last_seen_at ? 'Last seen ' . $person->last_seen_at->diffForHumans() : 'Offline');
-                $statusColor = $person->is_online ? 'var(--online)' : 'var(--text3)';
-            @endphp
-            <form method="POST" action="{{ route('people.dm', $person) }}" style="margin:0;" data-pname="{{ strtolower($person->name . ' ' . $person->username) }}">
-                @csrf
-                <button type="submit" style="display:flex;align-items:center;gap:14px;width:100%;padding:10px 12px;border-radius:14px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;transition:.12s;" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
-                    <div style="position:relative;flex-shrink:0;">
-                        @if($person->avatar_url)
-                        <img src="{{ $person->avatar_url }}" alt="{{ $person->name }}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
-                        @else
-                        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,{{ $cp[0] }},{{ $cp[1] }});display:grid;place-items:center;font-size:15px;font-weight:700;color:#fff;">{{ $pInitials }}</div>
-                        @endif
-                        <span style="position:absolute;bottom:1px;right:1px;width:11px;height:11px;border-radius:50%;background:{{ $person->is_online ? 'var(--online)' : 'var(--line)' }};border:2px solid var(--card,#1a2420);"></span>
-                    </div>
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-size:14.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $person->name }}</div>
-                        <div style="font-size:12.5px;color:var(--text3);margin-top:1px;">@{{ $person->username ?? strtolower(str_replace(' ','_',$person->name)) }} · <span style="color:{{ $statusColor }};">{{ $statusText }}</span></div>
-                    </div>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:var(--text3);flex-shrink:0;"><path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-            </form>
-            @endforeach
         </div>
     </div>
 </div>
@@ -169,10 +160,15 @@ function closeNewChat() {
 }
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeNewChat(); });
 function filterPeople(q) {
-    q = q.toLowerCase();
+    q = q.toLowerCase().replace(/^@/, '');
+    let shown = 0;
     document.querySelectorAll('#peopleList form[data-pname]').forEach(el => {
-        el.style.display = !q || el.dataset.pname.includes(q) ? '' : 'none';
+        const hit = !q || el.dataset.pname.includes(q);
+        el.style.display = hit ? '' : 'none';
+        if (hit) shown++;
     });
+    const empty = document.getElementById('ncEmpty');
+    if (empty) empty.style.display = shown ? 'none' : 'block';
 }
 function filterConvos(q) {
     q = q.toLowerCase();

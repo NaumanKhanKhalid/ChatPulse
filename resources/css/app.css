@@ -333,3 +333,36 @@ html.dark .sk::after { background: linear-gradient(90deg,transparent,rgba(255,25
   body.mobile-chat #list { display: none; }
   body.mobile-chat #chat { display: flex; }
 }
+
+/* ============================================================
+   New-message modal — exact prototype classes (chatpulsemodals.js)
+   ============================================================ */
+.cp-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(8,12,10,.5); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.cp-modal { width: 100%; max-width: 460px; max-height: 88vh; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 30px 70px -20px rgba(0,0,0,.5); overflow: hidden; animation: cpPop .22s cubic-bezier(.2,.8,.2,1); }
+@keyframes cpPop { from { transform: translateY(14px) scale(.97); } to { transform: none; } }
+.cp-head { display: flex; align-items: center; gap: 10px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+.cp-title { font-size: 17px; font-weight: 800; flex: 1; letter-spacing: -.01em; color: var(--text); }
+.cp-x { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; color: var(--text3); background: none; border: none; cursor: pointer; }
+.cp-x:hover { background: var(--hover); color: var(--text); }
+.cp-body { padding: 20px; overflow-y: auto; }
+.cp-input { width: 100%; border: 1.5px solid var(--line); background: var(--bg); border-radius: 11px; padding: 11px 13px; font-size: 14px; font-family: inherit; color: var(--text); outline: none; transition: border-color .15s, box-shadow .15s; }
+.cp-input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(16,185,129,.12); }
+.cp-label { font-size: 12.5px; font-weight: 800; color: var(--text2); display: block; margin-bottom: 7px; text-transform: uppercase; letter-spacing: .03em; }
+/* new chat — group button */
+.nc-group { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border-radius: 14px; border: 1px solid var(--line); text-align: left; background: none; cursor: pointer; font-family: inherit; margin-bottom: 14px; transition: .12s; }
+.nc-group:hover { background: var(--hover); border-color: var(--text3); }
+.nc-group-ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--primary-light); color: var(--primary-dark); flex-shrink: 0; }
+html.dark .nc-group-ic { color: #6ee7b7; }
+.nc-group-tx { flex: 1; display: flex; flex-direction: column; }
+.nc-group-t { font-size: 14px; font-weight: 800; color: var(--text); }
+.nc-group-s { font-size: 12px; color: var(--text3); margin-top: 1px; }
+.nc-go { color: var(--text3); flex-shrink: 0; }
+/* new chat — person rows */
+.nc-item { display: flex; align-items: center; gap: 11px; padding: 8px 12px; border-radius: 13px; cursor: pointer; width: 100%; text-align: left; background: none; border: none; font-family: inherit; transition: .1s; }
+.nc-item:hover { background: var(--hover); }
+.nc-avwrap { position: relative; flex-shrink: 0; }
+.nc-pres { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; border: 2.5px solid var(--card); }
+.nc-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.nc-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nc-sub { font-size: 12px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nc-empty { text-align: center; color: var(--text3); font-size: 13.5px; padding: 24px 0; }
