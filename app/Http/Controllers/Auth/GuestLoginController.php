@@ -15,18 +15,11 @@ class GuestLoginController extends Controller
 {
     public function show(Request $request): View
     {
-        $request->session()->put('guest_form_loaded', now());
         return view('auth.guest-login');
     }
 
     public function store(GuestLoginRequest $request, PresenceService $presence): RedirectResponse
     {
-        // Bot check: form submitted too fast
-        $loadedAt = $request->session()->get('guest_form_loaded');
-        if (!$loadedAt || now()->diffInSeconds($loadedAt) < 2) {
-            abort(429, 'Please wait a moment before submitting.');
-        }
-
         $username = 'guest_' . strtolower(Str::random(6));
 
         $user = User::create([
