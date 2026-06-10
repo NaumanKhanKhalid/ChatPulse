@@ -7,7 +7,9 @@ $convName = $conversation->getDisplayName(auth()->user());
 $other = $conversation->isDirect() ? $conversation->getOtherUser(auth()->user()) : null;
 $isGroup = $conversation->isGroup();
 $members = $conversation->members ?? collect();
-$colors = [['#818cf8','#7c3aed'],['#7dd3fc','#2563eb'],['#c4b5fd','#7c3aed'],['#6ee7b7','#0d9488'],['#fcd34d','#ea580c'],['#f0abfc','#a21caf'],['#fda4af','#e11d48']];
+$gradPool = [['#818cf8','#7c3aed'],['#7dd3fc','#2563eb'],['#c4b5fd','#7c3aed'],['#6ee7b7','#0d9488'],['#fcd34d','#ea580c'],['#f0abfc','#a21caf'],['#fda4af','#e11d48']];
+$userGrad = fn($u) => $u instanceof \App\Models\User ? $u->avatarGradient() : $gradPool[($u->id ?? 0) % count($gradPool)];
+$convGrad = fn($c) => ($c->isDirect() && $c->getOtherUser(auth()->user())) ? $c->getOtherUser(auth()->user())->avatarGradient() : $gradPool[$c->id % count($gradPool)];
 $getInitials = fn($n) => collect(explode(' ', $n))->map(fn($w) => strtoupper(substr($w,0,1)))->take(2)->join('');
 @endphp
 
@@ -39,7 +41,7 @@ $getInitials = fn($n) => collect(explode(' ', $n))->map(fn($w) => strtoupper(sub
         $cIsActive = $conv->id === $conversation->id;
         $cIsGroup = $conv->isGroup();
         $cInitials = $getInitials($cName);
-        $cColor = $colors[$conv->id % count($colors)];
+        $cColor = $convGrad($conv);
     @endphp
     <a href="{{ route('chat.conversation', $conv) }}"
        class="convo {{ $cIsActive ? 'active' : '' }} {{ $cIsGroup ? 'is-group' : 'is-dm' }} {{ $cUnread > 0 ? 'has-unread' : '' }}"
@@ -103,7 +105,7 @@ function setFilter(type, btn) {
             @if($other && $other->avatar_url)
             <img src="{{ $other->avatar_url }}" alt="{{ $convName }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
             @else
-            @php $convColor = $colors[$conversation->id % count($colors)]; $convInitials = $getInitials($convName); @endphp
+            @php $convColor = $convGrad($conversation); $convInitials = $getInitials($convName); @endphp
             <div class="avatar" style="width:40px;height:40px;background:linear-gradient(135deg,{{ $convColor[0] }},{{ $convColor[1] }});font-size:15px;">{{ $convInitials }}</div>
             @endif
             @if($other)
@@ -128,7 +130,7 @@ function setFilter(type, btn) {
         @if($isGroup)
         <div class="hdr-stack" style="margin-right:8px;">
             @foreach($members->take(4) as $member)
-            @php $mi = $getInitials($member->name); $mc = $colors[$member->id % count($colors)]; @endphp
+            @php $mi = $getInitials($member->name); $mc = $userGrad($member); @endphp
             <div class="mini-av" style="background:linear-gradient(135deg,{{ $mc[0] }},{{ $mc[1] }});">{{ $mi }}</div>
             @endforeach
             @if($members->count() > 4)
@@ -325,7 +327,7 @@ function setFilter(type, btn) {
 @section('right-panel')
 <div class="panel-hero">
     <div class="avwrap" style="display:flex;justify-content:center;margin-bottom:12px;">
-        @php $convColor = $colors[$conversation->id % count($colors)]; $convInitials = $getInitials($convName); @endphp
+        @php $convColor = $convGrad($conversation); $convInitials = $getInitials($convName); @endphp
         @if($other && $other->avatar_url)
         <img src="{{ $other->avatar_url }}" alt="{{ $convName }}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
         @else
@@ -358,7 +360,7 @@ function setFilter(type, btn) {
         Members
     </div>
     @foreach($members->take(8) as $member)
-    @php $mi = $getInitials($member->name); $mc = $colors[$member->id % count($colors)]; @endphp
+    @php $mi = $getInitials($member->name); $mc = $userGrad($member); @endphp
     <div style="display:flex;align-items:center;gap:10px;padding:6px 0;">
         <div class="avatar" style="width:36px;height:36px;background:linear-gradient(135deg,{{ $mc[0] }},{{ $mc[1] }});font-size:13px;flex-shrink:0;">{{ $mi }}</div>
         <div>

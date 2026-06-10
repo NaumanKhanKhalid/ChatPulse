@@ -60,4 +60,32 @@ class User extends Authenticatable
     public function unreadNotificationsCount(): int {
         return $this->notifications()->whereNull('read_at')->count();
     }
+
+    public function avatarGradient(): array
+    {
+        $map = [
+            'admin'       => ['#94a3b8', '#334155'],
+            'sara_karim'  => ['#f9a8d4', '#db2777'],
+            'ahmed_raza'  => ['#7dd3fc', '#2563eb'],
+            'usman_tariq' => ['#6ee7b7', '#0d9488'],
+            'ali_hassan'  => ['#fcd34d', '#ea580c'],
+            'fatima_ali'  => ['#c4b5fd', '#7c3aed'],
+            'zara_sheikh' => ['#818cf8', '#7c3aed'],
+            'omar_farooq' => ['#34d399', '#059669'],
+            'hina_malik'  => ['#f0abfc', '#a21caf'],
+        ];
+
+        if ($this->username && isset($map[$this->username])) {
+            return $map[$this->username];
+        }
+
+        // deterministic fallback based on name char codes
+        $pool = [
+            ['#818cf8','#7c3aed'], ['#7dd3fc','#2563eb'], ['#c4b5fd','#7c3aed'],
+            ['#6ee7b7','#0d9488'], ['#fcd34d','#ea580c'], ['#f0abfc','#a21caf'],
+            ['#fda4af','#e11d48'], ['#94a3b8','#334155'], ['#34d399','#059669'],
+        ];
+        $idx = array_sum(array_map('ord', str_split($this->name))) % count($pool);
+        return $pool[$idx];
+    }
 }

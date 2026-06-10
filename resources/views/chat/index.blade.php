@@ -34,8 +34,7 @@
                 @foreach($allUsers as $person)
                 @php
                     $pInitials = collect(explode(' ', $person->name))->map(fn($w) => strtoupper(substr($w,0,1)))->take(2)->join('');
-                    $colors = [['#818cf8','#7c3aed'],['#7dd3fc','#2563eb'],['#c4b5fd','#7c3aed'],['#6ee7b7','#0d9488'],['#fcd34d','#ea580c'],['#f0abfc','#a21caf'],['#fda4af','#e11d48']];
-                    $cp = $colors[$person->id % count($colors)];
+                    $cp = $person->avatarGradient();
                     $statusText = $person->is_online ? 'Active now' : ($person->last_seen_at ? 'last seen ' . $person->last_seen_at->diffForHumans() : 'offline');
                     $presColor = $person->is_online ? 'var(--online)' : ($person->status_type === 'busy' ? 'var(--busy)' : 'var(--away)');
                 @endphp
@@ -93,8 +92,10 @@
         $other = $conversation->isDirect() ? $conversation->getOtherUser(auth()->user()) : null;
         $isGroup = $conversation->isGroup();
         $initials = collect(explode(' ', $name))->map(fn($w) => strtoupper(substr($w,0,1)))->take(2)->join('');
-        $colors = [['#818cf8','#7c3aed'],['#7dd3fc','#2563eb'],['#c4b5fd','#7c3aed'],['#6ee7b7','#0d9488'],['#fcd34d','#ea580c'],['#f0abfc','#a21caf'],['#fda4af','#e11d48']];
-        $colorPair = $colors[$conversation->id % count($colors)];
+        $colorPair = $other ? $other->avatarGradient() : (function() use ($conversation) {
+            $pool = [['#818cf8','#7c3aed'],['#7dd3fc','#2563eb'],['#6ee7b7','#0d9488'],['#fcd34d','#ea580c'],['#f0abfc','#a21caf'],['#fda4af','#e11d48'],['#34d399','#059669']];
+            return $pool[$conversation->id % count($pool)];
+        })();
         $isActive = request()->route('conversation') && request()->route('conversation')->id === $conversation->id;
     @endphp
     <a href="{{ route('chat.conversation', $conversation) }}"

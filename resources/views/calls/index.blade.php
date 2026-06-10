@@ -18,8 +18,7 @@
         $isGroup = $call->conversation?->isGroup();
         $name = $isGroup ? $call->conversation->getDisplayName(auth()->user()) : ($other?->name ?? 'Unknown');
         $initials = collect(explode(' ', $name))->map(fn($w) => strtoupper(substr($w,0,1)))->take(2)->join('');
-        $colors = [['#818cf8','#7c3aed'],['#7dd3fc','#2563eb'],['#c4b5fd','#7c3aed'],['#6ee7b7','#0d9488'],['#fcd34d','#ea580c'],['#f0abfc','#a21caf'],['#fda4af','#e11d48']];
-        $cp = $colors[($other?->id ?? 1) % count($colors)];
+        $cp = $other instanceof \App\Models\User ? $other->avatarGradient() : ['#94a3b8','#334155'];
         $isMissed = $call->status === 'missed';
         $dir = $isMine ? 'outgoing' : ($isMissed ? 'missed' : 'incoming');
         $dur = $call->duration_seconds ? gmdate($call->duration_seconds >= 3600 ? 'H:i:s' : 'i:s', $call->duration_seconds) : null;
