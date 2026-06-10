@@ -54,7 +54,7 @@
                         </span>
                         <span class="nc-info">
                             <span class="nc-name">{{ $person->name }}</span>
-                            <span class="nc-sub">@{{ $person->username ?? strtolower(str_replace(' ','_',$person->name)) }} · {{ $statusText }}</span>
+                            <span class="nc-sub">{{ '@' . ($person->username ?? strtolower(str_replace(' ','_',$person->name))) }} · {{ $statusText }}</span>
                         </span>
                         <svg class="nc-go" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
