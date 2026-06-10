@@ -71,10 +71,64 @@
     </span>
     Continue as guest
   </a>
+
+  {{-- Quick-fill demo accounts --}}
+  <div style="margin-top:24px;border-radius:14px;border:1px dashed #e6e9e7;padding:14px 16px;">
+    <p style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#8a958f;margin:0 0 10px;">Quick sign-in — demo accounts</p>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <button type="button" onclick="fillDemo('admin@chatpulse.app')"
+              style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 11px;border-radius:10px;border:1px solid #e6e9e7;background:#fff;cursor:pointer;font-family:inherit;transition:.12s;"
+              onmouseover="this.style.borderColor='#10b981';this.style.background='#d1fae5'" onmouseout="this.style.borderColor='#e6e9e7';this.style.background='#fff'">
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);display:grid;place-items:center;flex-shrink:0;">
+          <span style="font-size:11px;font-weight:800;color:#fff;">AU</span>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#0c1411;">Admin User</div>
+          <div style="font-size:11.5px;color:#8a958f;">admin@chatpulse.app</div>
+        </div>
+        <span style="margin-left:auto;font-size:11.5px;font-weight:700;color:#10b981;background:#d1fae5;padding:2px 8px;border-radius:99px;">Admin</span>
+      </button>
+      <button type="button" onclick="fillDemo('sara@chatpulse.app')"
+              style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 11px;border-radius:10px;border:1px solid #e6e9e7;background:#fff;cursor:pointer;font-family:inherit;transition:.12s;"
+              onmouseover="this.style.borderColor='#10b981';this.style.background='#d1fae5'" onmouseout="this.style.borderColor='#e6e9e7';this.style.background='#fff'">
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#f9a8d4,#db2777);display:grid;place-items:center;flex-shrink:0;">
+          <span style="font-size:11px;font-weight:800;color:#fff;">SK</span>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#0c1411;">Sara Karim</div>
+          <div style="font-size:11.5px;color:#8a958f;">sara@chatpulse.app</div>
+        </div>
+        <span style="margin-left:auto;font-size:11.5px;font-weight:700;color:#56635d;background:#f1f4f2;padding:2px 8px;border-radius:99px;">User</span>
+      </button>
+      <button type="button" onclick="fillDemo('ahmed@chatpulse.app')"
+              style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 11px;border-radius:10px;border:1px solid #e6e9e7;background:#fff;cursor:pointer;font-family:inherit;transition:.12s;"
+              onmouseover="this.style.borderColor='#10b981';this.style.background='#d1fae5'" onmouseout="this.style.borderColor='#e6e9e7';this.style.background='#fff'">
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#7dd3fc,#2563eb);display:grid;place-items:center;flex-shrink:0;">
+          <span style="font-size:11px;font-weight:800;color:#fff;">AR</span>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#0c1411;">Ahmed Raza</div>
+          <div style="font-size:11.5px;color:#8a958f;">ahmed@chatpulse.app</div>
+        </div>
+        <span style="margin-left:auto;font-size:11.5px;font-weight:700;color:#56635d;background:#f1f4f2;padding:2px 8px;border-radius:99px;">User</span>
+      </button>
+    </div>
+    <p style="font-size:11.5px;color:#8a958f;margin:10px 0 0;text-align:center;">All passwords: <code style="font-size:11.5px;background:#f1f4f2;padding:1px 6px;border-radius:5px;">password</code></p>
+  </div>
 </div>
 
 @push('scripts')
 <script>
+function fillDemo(email) {
+  document.querySelector('input[name="email"]').value = email;
+  document.querySelector('input[name="password"]').value = 'password';
+  // show pw briefly so user sees it filled
+  const pw = document.getElementById('loginPw');
+  const toggle = document.getElementById('pwToggle');
+  pw.type = 'text'; toggle.textContent = 'Hide';
+  setTimeout(() => { document.getElementById('loginForm').submit(); }, 300);
+}
+
 (function() {
   // pw toggle
   const pw = document.getElementById('loginPw');
