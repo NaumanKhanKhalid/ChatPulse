@@ -66,6 +66,7 @@
     <button class="filter on" onclick="setFilter('all',this)">All</button>
     <button class="filter" onclick="setFilter('unread',this)">Unread</button>
     <button class="filter" onclick="setFilter('groups',this)">Groups</button>
+    <button class="filter" onclick="setFilter('scheduled',this)">Scheduled</button>
 </div>
 <div id="convoList">
     @forelse($conversations as $conversation)
@@ -158,6 +159,7 @@ function setFilter(type, btn) {
         let show = true;
         if (type === 'unread') show = el.classList.contains('has-unread');
         if (type === 'groups') show = el.classList.contains('is-group');
+        if (type === 'scheduled') show = el.classList.contains('has-scheduled');
         el.style.display = show ? '' : 'none';
     });
 }

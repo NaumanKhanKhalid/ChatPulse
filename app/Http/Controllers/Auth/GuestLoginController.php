@@ -3,6 +3,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\GuestLoginRequest;
+use App\Models\Conversation;
+use App\Models\ConversationParticipant;
 use App\Models\User;
 use App\Services\PresenceService;
 use Illuminate\Http\RedirectResponse;
@@ -32,6 +34,26 @@ class GuestLoginController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
         $presence->markOnline($user);
+
+        // Auto-join public groups so guest has conversations to see
+        $publicGroups = Conversation::where('type', 'group')
+            ->where('is_private', false)
+            ->get();
+        foreach ($publicGroups as $group) {
+            ConversationParticipant::firstOrCreate([
+                'conversation_id' => $group->id,
+                'user_id'         => $user->id,
+            ], ['role' => 'member', 'joined_at' => now()]);
+        }
+
+        // Create a DM with admin so guest has someone to message
+        $admin = User::where('role', 'admin')->first();
+        if ($admin) {
+            $dm = Conversation::create(['type' => 'direct', 'is_private' => true]);
+            ConversationParticipant::create(['conversation_id' => $dm->id, 'user_id' => $user->id, 'role' => 'member', 'joined_at' => now()]);
+            ConversationParticipant::create(['conversation_id' => $dm->id, 'user_id' => $admin->id, 'role' => 'member', 'joined_at' => now()]);
+        }
+
         return redirect()->route('chat.index');
     }
 }

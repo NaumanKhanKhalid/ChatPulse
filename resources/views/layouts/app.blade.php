@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <script>if(localStorage.getItem('darkMode')==='true')document.documentElement.classList.add('dark');</script>
+    <script>if(localStorage.getItem('darkMode')!=='false')document.documentElement.classList.add('dark');</script>
 </head>
 <body x-data="teamflowApp()" data-user-id="{{ auth()->id() }}" data-user-name="{{ auth()->user()?->name }}">
 
