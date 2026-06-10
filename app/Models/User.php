@@ -45,10 +45,9 @@ class User extends Authenticatable
     // helpers
     public function isAdmin(): bool { return $this->role === 'admin'; }
     public function isGuest(): bool { return $this->is_guest; }
-    public function getAvatarUrlAttribute(): string {
+    public function getAvatarUrlAttribute(): ?string {
         if ($this->avatar) return asset('storage/' . $this->avatar);
-        $initials = urlencode(substr($this->name, 0, 1));
-        return "https://ui-avatars.com/api/?name={$initials}&background=10b981&color=fff&size=128";
+        return null;
     }
     public function getStatusColorAttribute(): string {
         return match($this->status_type) {
