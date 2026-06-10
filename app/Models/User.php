@@ -63,29 +63,30 @@ class User extends Authenticatable
 
     public function avatarGradient(): array
     {
-        $map = [
-            'admin'       => ['#94a3b8', '#334155'],
-            'sara_karim'  => ['#f9a8d4', '#db2777'],
-            'ahmed_raza'  => ['#7dd3fc', '#2563eb'],
-            'usman_tariq' => ['#6ee7b7', '#0d9488'],
-            'ali_hassan'  => ['#fcd34d', '#ea580c'],
-            'fatima_ali'  => ['#c4b5fd', '#7c3aed'],
-            'zara_sheikh' => ['#818cf8', '#7c3aed'],
-            'omar_farooq' => ['#34d399', '#059669'],
-            'hina_malik'  => ['#f0abfc', '#a21caf'],
-        ];
+        // Derive a stable, well-distributed hue from the username via md5
+        $seed = $this->username ?? $this->name;
+        $hex  = md5($seed);
+        $hue  = hexdec(substr($hex, 0, 4)) % 360; // 0–359, evenly spread
 
-        if ($this->username && isset($map[$this->username])) {
-            return $map[$this->username];
-        }
-
-        // deterministic fallback based on name char codes
-        $pool = [
-            ['#818cf8','#7c3aed'], ['#7dd3fc','#2563eb'], ['#c4b5fd','#7c3aed'],
-            ['#6ee7b7','#0d9488'], ['#fcd34d','#ea580c'], ['#f0abfc','#a21caf'],
-            ['#fda4af','#e11d48'], ['#94a3b8','#334155'], ['#34d399','#059669'],
+        return [
+            self::hslToHex($hue, 80, 72),  // light pastel (gradient start)
+            self::hslToHex($hue, 65, 38),  // rich saturated (gradient end)
         ];
-        $idx = array_sum(array_map('ord', str_split($this->name))) % count($pool);
-        return $pool[$idx];
+    }
+
+    private static function hslToHex(float $h, float $s, float $l): string
+    {
+        $s /= 100;
+        $l /= 100;
+        $a  = $s * min($l, 1 - $l);
+        $f  = function (float $n) use ($h, $l, $a): float {
+            $k = fmod($n + $h / 30, 12);
+            return $l - $a * max(-1.0, min($k - 3, min(9 - $k, 1.0)));
+        };
+        return sprintf('#%02x%02x%02x',
+            (int) round($f(0) * 255),
+            (int) round($f(8) * 255),
+            (int) round($f(4) * 255),
+        );
     }
 }
