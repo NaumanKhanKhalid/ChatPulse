@@ -113,6 +113,7 @@ window.CPOverlays = (function () {
     .cp-notif-time{font-size:11px;color:var(--text3);margin-top:2px;}
     .cp-notif-foot{padding:10px;border-top:1px solid var(--line2);}
     .cp-notif-foot a{display:block;text-align:center;font-size:13px;font-weight:700;color:var(--primary-dark);padding:8px;border-radius:10px;}
+    .cp-notif-dot{width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-left:auto;align-self:center;}
     .cp-notif-foot a:hover{background:var(--hover);}
     html.dark .cp-notif-foot a{color:#6ee7b7;}
     `;
@@ -432,34 +433,51 @@ window.CPOverlays = (function () {
   };
   function openNotifications(anchor) {
     closeNotif();
-    const groups = [...new Set(NOTIF.map(n => n.group))];
+    const R = window.CP_ROUTES || {};
     const panel = document.createElement('div'); panel.className = 'cp-notif';
-    panel.innerHTML = `
-      <div class="cp-notif-head"><h4>Notifications</h4><button class="cp-notif-clear" data-clearall>Mark all read</button></div>
-      <div class="cp-notif-list">
-        ${groups.map(g => `<div class="cp-notif-sec">${g}</div>` + NOTIF.filter(n => n.group === g).map((n, i) => `
-          <div class="cp-notif-item ${n.unread ? 'unread' : ''}" data-ni="${NOTIF.indexOf(n)}">
-            <div class="cp-notif-ava">${av(users[n.uid], 38)}<span class="cp-notif-badge" style="background:${n.col}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none">${NICONS[n.icon]}</svg></span></div>
-            <div class="cp-notif-txt"><b>${esc(users[n.uid].name)}</b> ${n.txt}${n.sub ? `<div class="cp-notif-time" style="color:var(--text2);font-style:italic">${esc(n.sub)}</div>` : ''}<div class="cp-notif-time">${n.time}</div></div>
-          </div>`).join('')).join('')}
-      </div>
-      <div class="cp-notif-foot"><a href="ChatPulse Screens.html?s=notif">Open notifications page</a></div>`;
+    panel.innerHTML = `<div class="cp-notif-head"><h4>Notifications</h4><button class="cp-notif-clear" data-clearall>Mark all read</button></div><div class="cp-notif-list" id="notifList"><div style="padding:24px;text-align:center;color:var(--text3);font-size:13px">Loading…</div></div><div class="cp-notif-foot"><a href="/notifications">Open all notifications</a></div>`;
     document.body.appendChild(panel);
     const r = anchor.getBoundingClientRect();
-    // rail is on the left → place to the right of the bell; fall back to below
     let left = r.right + 10, top = Math.min(r.top, window.innerHeight - 480);
     if (left + 360 > window.innerWidth) left = Math.max(12, window.innerWidth - 372);
     panel.style.left = left + 'px'; panel.style.top = Math.max(12, top) + 'px';
-    panel.querySelector('[data-clearall]').addEventListener('click', () => { NOTIF.forEach(n => n.unread = false); panel.querySelectorAll('.cp-notif-item').forEach(el => el.classList.remove('unread')); updateBellDots(); });
-    panel.querySelectorAll('[data-ni]').forEach(el => el.addEventListener('click', () => { NOTIF[+el.dataset.ni].unread = false; el.classList.remove('unread'); updateBellDots(); }));
+
+    fetch(R.notifFetch || '/notifications/fetch', { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': R.csrf || '' } })
+      .then(r => r.json())
+      .then(data => {
+        const notifs = data.notifications || [];
+        const list = panel.querySelector('#notifList');
+        if (!notifs.length) { list.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text3);font-size:13px">No notifications yet</div>'; return; }
+        list.innerHTML = notifs.map(n => `
+          <div class="cp-notif-item ${n.unread ? 'unread' : ''}" data-nid="${n.id}">
+            <div class="cp-notif-txt">
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(n.title || '')}</div>
+              ${n.body ? `<div style="font-size:12px;color:var(--text3);margin-top:2px">${esc(n.body)}</div>` : ''}
+              <div class="cp-notif-time">${esc(n.time)}</div>
+            </div>
+            ${n.unread ? '<span class="cp-notif-dot"></span>' : ''}
+          </div>`).join('');
+        panel.querySelectorAll('[data-nid]').forEach(el => el.addEventListener('click', () => {
+          const url = (R.notifRead || '/notifications/{notif}/read').replace('{notif}', el.dataset.nid);
+          fetch(url, { method: 'PATCH', headers: { 'X-CSRF-TOKEN': R.csrf||'', 'Accept':'application/json' } }).catch(()=>{});
+          el.classList.remove('unread'); el.querySelector('.cp-notif-dot')?.remove();
+          updateBellDots(data.unread - 1);
+        }));
+        updateBellDots(data.unread);
+      }).catch(() => { panel.querySelector('#notifList').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3)">Could not load notifications</div>'; });
+
+    panel.querySelector('[data-clearall]').addEventListener('click', () => {
+      fetch(R.notifReadAll || '/notifications/read-all', { method: 'POST', headers: { 'X-CSRF-TOKEN': R.csrf||'', 'Accept':'application/json' } }).catch(()=>{});
+      panel.querySelectorAll('.cp-notif-item').forEach(el => { el.classList.remove('unread'); el.querySelector('.cp-notif-dot')?.remove(); });
+      updateBellDots(0);
+    });
     setTimeout(() => document.addEventListener('click', function h(e) { if (!panel.contains(e.target) && !anchor.contains(e.target) && e.target !== anchor) { panel.remove(); document.removeEventListener('click', h); } }), 0);
   }
   function closeNotif() { document.querySelectorAll('.cp-notif').forEach(p => p.remove()); }
-  function updateBellDots() {
-    const count = NOTIF.filter(n => n.unread).length;
+  function updateBellDots(count) {
     document.querySelectorAll('[data-nav="notif"] .rb-badge, [data-mnav="notif"] .mtab-dot').forEach(b => {
-      if (b.classList.contains('rb-badge')) { if (count) b.textContent = count; else b.style.display = 'none'; }
-      else b.style.display = count ? 'block' : 'none';
+      if (b.classList.contains('rb-badge')) { if (count > 0) { b.textContent = count; b.style.display = ''; } else b.style.display = 'none'; }
+      else b.style.display = count > 0 ? 'block' : 'none';
     });
   }
 
