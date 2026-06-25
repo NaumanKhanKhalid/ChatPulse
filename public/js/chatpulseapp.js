@@ -750,6 +750,62 @@
     });
   }
 
+  /* ---------- user menu (rail avatar) ---------- */
+  function openUserMenu() {
+    closePops();
+    const anchor = $('.rail-ava');
+    const statusColors = { available: '#10b981', busy: '#ef4444', away: '#f59e0b' };
+    const statusLabels = { available: 'Available', busy: 'Busy', away: 'Away' };
+    const curStatus = me.status || 'available';
+
+    const menu = document.createElement('div');
+    menu.className = 'pop-menu user-menu';
+    menu.style.cssText = 'min-width:220px;padding:8px;';
+    menu.innerHTML = `
+      <div class="um-hero">
+        <div class="avatar" style="width:40px;height:40px;background:linear-gradient(135deg,${me.grad[0]},${me.grad[1]});font-size:15px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700">${me.initials}</div>
+        <div class="um-info">
+          <div class="um-name">${esc(me.name)}</div>
+          <div class="um-handle">@${esc(me.username)}</div>
+        </div>
+      </div>
+      <div class="pm-sep"></div>
+      <div class="um-status-row">
+        ${['available','busy','away'].map(s => `<button class="um-st ${s === curStatus ? 'active' : ''}" data-st="${s}" style="--stc:${statusColors[s]}"><span class="um-dot" style="background:${statusColors[s]}"></span>${statusLabels[s]}</button>`).join('')}
+      </div>
+      <div class="pm-sep"></div>
+      <button class="pm-item" id="umEditProfile"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M16.5 4.5 19.5 7.5 9 18l-3.6.6.6-3.6L16.5 4.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span>Edit profile</span></button>
+      <button class="pm-item" id="umSettings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.5v2M12 18.5v2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M3.5 12h2M18.5 12h2M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Settings</span></button>
+      <div class="pm-sep"></div>
+      <button class="pm-item danger" id="umLogout"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M16 17l5-5-5-5M21 12H9M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Log out</span></button>`;
+
+    document.body.appendChild(menu);
+    const r = anchor.getBoundingClientRect();
+    menu.style.left = (r.right + 10) + 'px';
+    menu.style.top = Math.min(r.top, window.innerHeight - menu.offsetHeight - 10) + 'px';
+
+    // status buttons
+    menu.querySelectorAll('[data-st]').forEach(b => b.addEventListener('click', () => {
+      const st = b.dataset.st;
+      me.status = st;
+      const dot = $('.rail-ava .pres');
+      if (dot) dot.style.background = statusColors[st];
+      menu.querySelectorAll('[data-st]').forEach(x => x.classList.toggle('active', x.dataset.st === st));
+      apiPost(R.heartbeat || '/presence/heartbeat', { status: st }).catch(() => {});
+    }));
+
+    menu.querySelector('#umEditProfile')?.addEventListener('click', () => { closePops(); CPAccount?.openEditProfile(); });
+    menu.querySelector('#umSettings')?.addEventListener('click', () => { closePops(); location.href = R.settings || '/settings'; });
+    menu.querySelector('#umLogout')?.addEventListener('click', () => {
+      closePops();
+      const f = document.createElement('form'); f.method = 'POST'; f.action = '/logout';
+      const t = document.createElement('input'); t.type = 'hidden'; t.name = '_token'; t.value = R.csrf || '';
+      f.appendChild(t); document.body.appendChild(f); f.submit();
+    });
+
+    setTimeout(() => document.addEventListener('click', closePops, { once: true }), 0);
+  }
+
   /* ---------- dark mode ---------- */
   function initDark() {
     const saved = localStorage.getItem('cp-dark');
@@ -807,12 +863,11 @@
       if (name === 'Scheduled') { listView = 'scheduled'; renderScheduled(); }
       else { listView = 'chats'; applyFilter(name); }
     }));
-    // status picker from rail avatar
-    $('.rail-ava')?.addEventListener('click', () => CPModals.openStatus(st => {
-      const dot = $('.rail-ava .pres');
-      const colors = { available: '#10b981', busy: '#ef4444', away: '#f59e0b' };
-      if (dot) dot.style.background = colors[st.type];
-    }));
+    // rail avatar → user menu
+    $('.rail-ava')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openUserMenu();
+    });
     updateSendMic();
   }
 
