@@ -685,8 +685,7 @@
       msg.id = 'db' + saved.id;
       msg.status = 'sent';
       if (c.id === activeId) renderThread(c);
-      setTimeout(() => { msg.status = 'delivered'; if (c.id === activeId) renderThread(c); }, 800);
-      setTimeout(() => { msg.status = 'read';      if (c.id === activeId) renderThread(c); }, 2000);
+      // 'delivered' and 'read' only via real-time (Reverb WebSocket) — not faked
     }).catch(() => { msg.status = 'failed'; if (c.id === activeId) renderThread(c); renderList($('#search').value); });
   }
 

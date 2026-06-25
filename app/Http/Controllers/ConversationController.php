@@ -184,7 +184,7 @@ class ConversationController extends Controller
             'user'   => $m->user_id,
             't'      => $m->created_at->format('g:i A'),
             'text'   => $m->body ?? '',
-            'status' => $m->user_id === $user->id ? 'read' : null,
+            'status' => $m->user_id === $user->id ? 'sent' : null,
         ];
 
         if (!empty($reactions))     $msg['reactions'] = $reactions;
