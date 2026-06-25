@@ -159,13 +159,31 @@
     }).join('');
     html += `</div>`;
     wrap.innerHTML = html;
-    $$('[data-cancsched]', wrap).forEach(b => b.addEventListener('click', () => { scheduled.splice(+b.dataset.cancsched, 1); renderScheduled(); toast('Scheduled message cancelled'); }));
+    $$('[data-cancsched]', wrap).forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.cancsched;
+      const s = scheduled[i];
+      if (s && s.dbId) {
+        const url = (R.scheduleDel || '/scheduled/{msg}').replace('{msg}', s.dbId);
+        apiDelete(url).catch(() => {});
+      }
+      scheduled.splice(i, 1); renderScheduled(); toast('Scheduled message cancelled');
+    }));
     $$('[data-editsched]', wrap).forEach(b => b.addEventListener('click', () => editScheduled(+b.dataset.editsched)));
     $$('[data-sendnow]', wrap).forEach(b => b.addEventListener('click', () => {
-      const s = scheduled.splice(+b.dataset.sendnow, 1)[0];
+      const i = +b.dataset.sendnow;
+      const s = scheduled.splice(i, 1)[0];
       const c = conversations.find(x => x.id === s.convoId);
-      if (c) { c.messages.push({ id: 'x' + Date.now(), user: me.id, t: nowTime(), text: s.text, read: false }); c.last = 'You: ' + s.text; c.time = nowTime(); }
-      renderScheduled(); toast('Message sent');
+      if (c) {
+        const msg = { id: 'x' + Date.now(), user: me.id, t: nowTime(), text: s.text, status: 'sending' };
+        c.messages.push(msg); c.last = 'You: ' + s.text; c.time = nowTime();
+        deliverMessage(c, msg);
+        // Delete scheduled record from DB
+        if (s.dbId) {
+          const url = (R.scheduleDel || '/scheduled/{msg}').replace('{msg}', s.dbId);
+          apiDelete(url).catch(() => {});
+        }
+      }
+      renderScheduled(); renderList($('#search').value);
     }));
   }
   function editScheduled(i) {
@@ -583,11 +601,29 @@
   function closePops() { $$('.emoji-pop, .pop-menu').forEach(p => p.remove()); }
 
   function votePoll(c, msgId, opt) {
-    const p = c.messages.find(m => m.id === msgId).poll;
+    const msg = c.messages.find(m => m.id === msgId);
+    const p = msg.poll;
+    if (!p) return;
+    // Optimistic update
     if (p.voted === opt + 1) return;
     if (p.voted) p.options[p.voted - 1].votes--; else p.total++;
     p.options[opt].votes++; p.voted = opt + 1;
     renderThread(c);
+    // Backend sync — need poll DB id stored on poll object
+    if (p.dbId) {
+      const optionId = p.options[opt].dbId;
+      if (optionId) {
+        const url = (R.pollVote || '/polls/{poll}/vote').replace('{poll}', p.dbId);
+        apiPost(url, { option_id: optionId }).then(data => {
+          if (data && data.options) {
+            // Update with real counts from server
+            data.options.forEach((o, i) => { if (p.options[i]) p.options[i].votes = o.votes_count; });
+            p.total = data.total_votes;
+            renderThread(c);
+          }
+        }).catch(() => {});
+      }
+    }
   }
   function togglePin(c, msgId) {
     c.pinnedIds = c.pinnedIds || [];
@@ -951,9 +987,31 @@
     ]);
   }
   function addScheduled(text, when) {
-    scheduled.unshift({ convoId: activeId, uid: me.id, when, text });
+    // Map label to actual datetime
+    const now = new Date();
+    const whenMap = {
+      'In 1 hour': new Date(now.getTime() + 3600000),
+      'Tonight · 8:00 PM': (() => { const d = new Date(now); d.setHours(20,0,0,0); return d; })(),
+      'Tomorrow · 9:00 AM': (() => { const d = new Date(now); d.setDate(d.getDate()+1); d.setHours(9,0,0,0); return d; })(),
+      'Mon · 9:00 AM': (() => { const d = new Date(now); const day = d.getDay(); d.setDate(d.getDate() + ((8-day)%7||7)); d.setHours(9,0,0,0); return d; })(),
+    };
+    const scheduledAt = whenMap[when] || new Date(now.getTime() + 3600000);
+    const entry = { convoId: activeId, uid: me.id, when, text };
+    scheduled.unshift(entry);
     $('#composer').innerHTML = ''; updateSendMic();
     toast('Message scheduled · ' + when);
+    // Save to DB
+    const c = conversations.find(x => x.id === activeId);
+    if (c) {
+      const url = (R.scheduleMsg || '/conversations/{conv}/messages').replace('{conv}', convDbId(c));
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json' },
+        body: JSON.stringify({ body: text, is_scheduled: true, scheduled_at: scheduledAt.toISOString() }),
+      }).then(r => r.json()).then(data => {
+        if (data && data.message) entry.dbId = data.message.id;
+      }).catch(() => {});
+    }
   }
 
   /* ---------- popover menu ---------- */
@@ -972,7 +1030,22 @@
   function plusMenu(anchor) {
     const c = conversations.find(x => x.id === activeId);
     popMenu(anchor, [
-      { ic: 'poll', label: 'Create poll', fn: () => CPModals.openPoll(p => { c.messages.push({ id: 'p' + Date.now(), user: me.id, t: nowTime(), text: '', poll: p }); c.last = 'You: created a poll'; renderThread(c); renderList($('#search').value); }) },
+      { ic: 'poll', label: 'Create poll', fn: () => CPModals.openPoll(p => {
+        const tempId = 'p' + Date.now();
+        const msg = { id: tempId, user: me.id, t: nowTime(), text: '', poll: p };
+        c.messages.push(msg); c.last = 'You: created a poll';
+        renderThread(c); renderList($('#search').value);
+        const url = (R.pollStore || '/conversations/{conv}/polls').replace('{conv}', convDbId(c));
+        apiPost(url, { question: p.q, options: p.options.map(o => o.text), is_multiple_choice: p.multi, is_anonymous: p.anon })
+          .then(data => {
+            if (data && data.poll) {
+              p.dbId = data.poll.id;
+              data.poll.options.forEach((o, i) => { if (p.options[i]) p.options[i].dbId = o.id; });
+              msg.id = 'db' + data.message_id;
+              renderThread(c);
+            }
+          }).catch(() => {});
+      }) },
       { ic: 'file', label: 'Upload file', fn: () => $('#fileInput').click() },
       { ic: 'clock', label: 'Schedule message', fn: () => toast('Schedule picker') },
     ]);
@@ -1388,6 +1461,12 @@
         c.typing = Object.keys(c._typers || {}).length > 0;
         if (c.id === activeId) renderThread(c);
         renderList($('#search').value);
+      })
+      .listen('ConversationRead', e => {
+        // Another user read this conversation — mark our messages as read
+        if (e.user_id === me.id) return;
+        c.messages.forEach(m => { if (m.user === me.id && m.status && m.status !== 'read') m.status = 'read'; });
+        if (c.id === activeId) renderThread(c);
       });
   }
 

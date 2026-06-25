@@ -43,6 +43,7 @@ class ConversationController extends Controller
             ->orderBy('scheduled_at')
             ->get()
             ->map(fn($m) => [
+                'dbId'    => $m->id,
                 'convoId' => 'c' . $m->conversation_id,
                 'uid'     => $m->user_id,
                 'when'    => $m->scheduled_at?->format('D · g:i A') ?? 'Scheduled',
@@ -74,6 +75,10 @@ class ConversationController extends Controller
             'createGroup'  => route('groups.store'),
             'chat'         => route('chat.index'),
             'heartbeat'    => route('presence.heartbeat'),
+            'pollVote'     => url('/polls/{poll}/vote'),
+            'pollStore'    => url('/conversations/{conv}/polls'),
+            'scheduleMsg'  => url('/conversations/{conv}/messages'),
+            'scheduleDel'  => url('/scheduled/{msg}'),
             'csrf'         => csrf_token(),
         ]);
 
@@ -212,7 +217,11 @@ class ConversationController extends Controller
     public function markRead(Conversation $conversation, \App\Services\MessageService $messageService): JsonResponse
     {
         $this->authorizeParticipant($conversation);
-        $messageService->markConversationAsRead($conversation, auth()->user());
+        $user = auth()->user();
+        $messageService->markConversationAsRead($conversation, $user);
+        try {
+            broadcast(new \App\Events\ConversationRead($conversation->id, $user->id));
+        } catch (\Throwable) {}
         return response()->json(['success' => true]);
     }
 
