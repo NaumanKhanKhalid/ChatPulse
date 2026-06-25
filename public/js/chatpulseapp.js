@@ -1203,7 +1203,10 @@
     listSkeleton(); threadSkeleton();
     setTimeout(() => {
       const c = conversations.find(x => x.id === activeId);
-      renderList(); renderHeader(c); renderThread(c); renderPanel(c);
+      renderList();
+      if (c) { renderHeader(c); renderThread(c); renderPanel(c); }
+      else if (conversations.length) { selectConvo(conversations[0].id); }
+      else { showWelcome(); }
     }, 750);
     setTimeout(() => { if (window.CPAccount) CPAccount.startOnboarding(/[?&]onboarding=1/.test(location.search)); }, 950);
   }
