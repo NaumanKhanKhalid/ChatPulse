@@ -1287,7 +1287,7 @@
 
     window.Echo.private('conversation.' + dbId)
       // New message from another user
-      .listen('.MessageSent', e => {
+      .listen('MessageSent', e => {
         const msg = e.message;
         if (!msg || msg.user_id === me.id) return; // own message already in list
         const existing = c.messages.find(m => m.id === 'db' + msg.id);
@@ -1312,17 +1312,17 @@
         renderList($('#search').value);
       })
       // Message edited
-      .listen('.MessageUpdated', e => {
+      .listen('MessageUpdated', e => {
         const msg = c.messages.find(m => m.id === 'db' + e.message.id);
         if (msg) { msg.text = e.message.body; msg.edited = true; if (c.id === activeId) renderThread(c); }
       })
       // Message deleted
-      .listen('.MessageDeleted', e => {
+      .listen('MessageDeleted', e => {
         const idx = c.messages.findIndex(m => m.id === 'db' + e.message_id);
         if (idx > -1) { c.messages[idx].deleted = true; c.messages[idx].text = 'This message was deleted'; if (c.id === activeId) renderThread(c); }
       })
       // Reaction toggled
-      .listen('.ReactionToggled', e => {
+      .listen('ReactionToggled', e => {
         const msg = c.messages.find(m => m.id === 'db' + e.message_id);
         if (msg) { msg.reactions = e.reactions; if (c.id === activeId) renderThread(c); }
       });
