@@ -8,6 +8,10 @@
   let activeId = (window.CP && window.CP.activeId && conversations.find(c => c.id === window.CP.activeId)) ? window.CP.activeId : conversations[0]?.id;
   let listView = 'chats'; // chats | people | saved | scheduled
 
+  // Until WebSocket (Reverb) is wired, only the current logged-in user is reliably online.
+  // Overwrite stale is_online flags from page-load snapshot.
+  Object.values(users).forEach(u => { if (u.id !== me.id) u.online = false; });
+
   /* ---------- avatar ---------- */
   function avatar(u, size) {
     const s = size || 36;
