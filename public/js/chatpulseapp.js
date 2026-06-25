@@ -858,7 +858,7 @@
     clearTimeout(typingTimer);
     typingTimer = setTimeout(() => {
       ch.whisper('stop-typing', { user_id: me.id });
-    }, 1500);
+    }, 800);
   }
 
   function initComposer() {
@@ -1368,7 +1368,7 @@
           c.typing = Object.keys(c._typers || {}).length > 0;
           if (c.id === activeId) renderThread(c);
           renderList($('#search').value);
-        }, 2000);
+        }, 1200);
         if (c.id === activeId) renderThread(c);
         renderList($('#search').value);
       })
