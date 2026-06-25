@@ -17,7 +17,7 @@ class UserSeeder extends Seeder
                 'role'        => 'admin',
                 'bio'         => 'Platform administrator. Here to keep things running.',
                 'status_type' => 'available',
-                'is_online'   => true,
+                'is_online'   => false,
             ],
             [
                 'name'        => 'Sara Karim',
@@ -25,7 +25,7 @@ class UserSeeder extends Seeder
                 'username'    => 'sara_karim',
                 'bio'         => 'Product designer at Northwind Studio. Figma addict ✏️',
                 'status_type' => 'available',
-                'is_online'   => true,
+                'is_online'   => false,
             ],
             [
                 'name'        => 'Ahmed Raza',
@@ -33,7 +33,7 @@ class UserSeeder extends Seeder
                 'username'    => 'ahmed_raza',
                 'bio'         => 'Full-stack engineer. Laravel + Alpine.js enthusiast.',
                 'status_type' => 'available',
-                'is_online'   => true,
+                'is_online'   => false,
             ],
             [
                 'name'        => 'Usman Tariq',
@@ -41,7 +41,7 @@ class UserSeeder extends Seeder
                 'username'    => 'usman_tariq',
                 'bio'         => 'Backend dev. Queues, caches, and Reverb.',
                 'status_type' => 'busy',
-                'is_online'   => true,
+                'is_online'   => false,
             ],
             [
                 'name'        => 'Ali Hassan',
@@ -65,7 +65,7 @@ class UserSeeder extends Seeder
                 'username'    => 'zara_sheikh',
                 'bio'         => 'UI designer. Pixel-perfect or nothing.',
                 'status_type' => 'available',
-                'is_online'   => true,
+                'is_online'   => false,
             ],
             [
                 'name'        => 'Omar Farooq',
@@ -81,7 +81,7 @@ class UserSeeder extends Seeder
                 'username'    => 'hina_malik',
                 'bio'         => 'Frontend developer. Tailwind is life.',
                 'status_type' => 'available',
-                'is_online'   => true,
+                'is_online'   => false,
             ],
         ];
 

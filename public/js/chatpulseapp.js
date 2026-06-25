@@ -1198,8 +1198,17 @@
   }
 
   /* ---------- boot ---------- */
+  function initHeartbeat() {
+    const url = R.heartbeat;
+    if (!url) return;
+    const ping = () => apiPost(url, {}).catch(() => {});
+    ping();
+    setInterval(ping, 60000); // every 60s
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) ping(); });
+  }
+
   function boot() {
-    initDark(); initRail(); initComposer(); initNet(); initThreadSearch();
+    initDark(); initRail(); initComposer(); initNet(); initThreadSearch(); initHeartbeat();
     listSkeleton(); threadSkeleton();
     setTimeout(() => {
       const c = conversations.find(x => x.id === activeId);

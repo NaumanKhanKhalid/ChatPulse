@@ -73,6 +73,7 @@ class ConversationController extends Controller
             'startDirect'  => route('conversations.direct'),
             'createGroup'  => route('groups.store'),
             'chat'         => route('chat.index'),
+            'heartbeat'    => route('presence.heartbeat'),
             'csrf'         => csrf_token(),
         ]);
 
