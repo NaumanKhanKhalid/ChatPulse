@@ -45,6 +45,7 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
     Route::get('/chat', [ConversationController::class, 'index'])->name('chat.index');
     Route::get('/chat/{conversation}', [ConversationController::class, 'show'])->name('chat.conversation');
     Route::post('/conversations/{conversation}/read', [ConversationController::class, 'markRead'])->name('conversations.read');
+    Route::post('/conversations/direct', [ConversationController::class, 'startDirect'])->name('conversations.direct');
 
     // Messages
     Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store'])->name('messages.store')->middleware('throttle:messages');

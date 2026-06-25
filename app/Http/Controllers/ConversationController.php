@@ -59,11 +59,21 @@ class ConversationController extends Controller
         ], JSON_UNESCAPED_UNICODE);
 
         $cpRoutes = json_encode([
-            'admin'       => route('admin.dashboard'),
-            'settings'    => route('settings.index'),
-            'sendMessage' => url('/conversations/{conv}/messages'),
-            'markRead'    => url('/conversations/{conv}/read'),
-            'csrf'        => csrf_token(),
+            'admin'        => route('admin.dashboard'),
+            'settings'     => route('settings.index'),
+            'sendMessage'  => url('/conversations/{conv}/messages'),
+            'markRead'     => url('/conversations/{conv}/read'),
+            'react'        => url('/messages/{msg}/reactions'),
+            'pinAdd'       => url('/conversations/{conv}/pins'),
+            'pinRemove'    => url('/conversations/{conv}/pins/{msg}'),
+            'bookmark'     => url('/messages/{msg}/bookmark'),
+            'editMessage'  => url('/messages/{msg}'),
+            'deleteMessage'=> url('/messages/{msg}'),
+            'forward'      => url('/messages/{msg}/forward'),
+            'startDirect'  => route('conversations.direct'),
+            'createGroup'  => route('groups.store'),
+            'chat'         => route('chat.index'),
+            'csrf'         => csrf_token(),
         ]);
 
         $activeConvIdStr = $activeConvId ? 'c'.$activeConvId : null;
@@ -203,6 +213,17 @@ class ConversationController extends Controller
         $this->authorizeParticipant($conversation);
         $messageService->markConversationAsRead($conversation, auth()->user());
         return response()->json(['success' => true]);
+    }
+
+    public function startDirect(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $request->validate(['user_id' => ['required', 'integer', 'exists:users,id']]);
+        $other = User::findOrFail($request->user_id);
+        $conversation = $this->service->getOrCreateDirect(auth()->user(), $other);
+        return response()->json([
+            'id'   => 'c' . $conversation->id,
+            'dbId' => $conversation->id,
+        ]);
     }
 
     private function authorizeParticipant(Conversation $conversation): void

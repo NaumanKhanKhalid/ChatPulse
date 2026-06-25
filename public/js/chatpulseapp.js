@@ -505,6 +505,7 @@
       else if (kind === 'pin') togglePin(c, id);
       else if (kind === 'edit') startEdit(c, id);
       else if (kind === 'forward') forwardMessage(c, id);
+      else if (kind === 'bookmark') toggleBookmark(c, id, e.currentTarget);
       else moreMenu(c, id, e.currentTarget);
     }));
     $$('[data-voice]').forEach(v => v.querySelector('.v-play').addEventListener('click', () => toggleVoice(v)));
@@ -556,11 +557,14 @@
   }
 
   function toggleReact(c, msgId, emo) {
-    const msg = c.messages.find(m => m.id === msgId); msg.reactions = msg.reactions || {};
+    const msg = c.messages.find(m => m.id === msgId); if (!msg || !msgId.startsWith('db')) return;
+    msg.reactions = msg.reactions || {};
     const arr = msg.reactions[emo] = msg.reactions[emo] || [];
     const i = arr.indexOf(me.id);
     if (i > -1) { arr.splice(i, 1); if (!arr.length) delete msg.reactions[emo]; } else arr.push(me.id);
     renderThread(c);
+    const url = (R.react || '/messages/{msg}/reactions').replace('{msg}', msgDbId(msgId));
+    apiPost(url, { emoji: emo }).catch(() => {});
   }
   function openEmoji(c, msgId, anchor) {
     closePops();
@@ -585,8 +589,17 @@
     c.pinnedIds = c.pinnedIds || [];
     const msg = c.messages.find(m => m.id === msgId);
     const i = c.pinnedIds.indexOf(msgId);
-    if (i > -1) { c.pinnedIds.splice(i, 1); msg.pinned = false; toast('Message unpinned'); }
-    else { if (c.pinnedIds.length >= 10) { toast('Max 10 pins reached', true); return; } c.pinnedIds.push(msgId); msg.pinned = true; toast('Message pinned'); }
+    const dbMsg = msgDbId(msgId); const dbConv = convDbId(c);
+    if (i > -1) {
+      c.pinnedIds.splice(i, 1); msg.pinned = false; toast('Message unpinned');
+      const url = (R.pinRemove || '/conversations/{conv}/pins/{msg}').replace('{conv}', dbConv).replace('{msg}', dbMsg);
+      apiDelete(url).catch(() => {});
+    } else {
+      if (c.pinnedIds.length >= 10) { toast('Max 10 pins reached', true); return; }
+      c.pinnedIds.push(msgId); msg.pinned = true; toast('Message pinned');
+      const url = (R.pinAdd || '/conversations/{conv}/pins').replace('{conv}', dbConv);
+      apiPost(url, { message_id: +dbMsg }).catch(() => {});
+    }
     renderThread(c); renderPanel(c);
   }
 
@@ -642,7 +655,21 @@
       body: JSON.stringify(body),
     });
   }
+  function apiPatch(url, body) {
+    return fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+  function apiDelete(url) {
+    return fetch(url, {
+      method: 'DELETE',
+      headers: { 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json' },
+    });
+  }
   function convDbId(c) { return c.id.replace(/^c/, ''); }
+  function msgDbId(msgId) { return msgId.replace(/^db/, ''); }
 
   function deliverMessage(c, msg) {
     if (!navigator.onLine) { msg.status = 'failed'; if (c.id === activeId) renderThread(c); renderList($('#search').value); return; }
@@ -696,23 +723,27 @@
     CPModals.openNewChat(startDirect, startGroup);
   }
   function startDirect(uid) {
-    // jump to an existing DM with this person instead of duplicating it
     const existing = conversations.find(c => c.type === 'direct' && c.with === uid && !c.archived);
     if (existing) { selectConvo(existing.id); return; }
-    const id = 'draft' + Date.now();
-    conversations.unshift({ id, type: 'direct', with: uid, unread: 0, time: 'now', last: '', read: false, messages: [] });
-    selectConvo(id);
-    toast('Chat started with ' + users[uid].name.split(' ')[0]);
+    const u = users[uid];
+    apiPost(R.startDirect || '/conversations/direct', { user_id: uid }).then(r => r.json()).then(data => {
+      // server may have found existing or created new
+      const existNow = conversations.find(c => c.id === data.id);
+      if (existNow) { selectConvo(existNow.id); return; }
+      const newConv = { id: data.id, type: 'direct', with: uid, unread: 0, time: 'now', last: '', read: true, messages: [], pinnedIds: [] };
+      conversations.unshift(newConv);
+      selectConvo(data.id);
+      toast('Chat started with ' + u.name.split(' ')[0]);
+    }).catch(() => toast('Could not start chat', true));
   }
   function startGroup() {
     CPModals.openNewGroup(g => {
-      const id = 'grp' + Date.now();
-      conversations.unshift({
-        id, type: 'group', name: g.name, desc: g.desc, public: g.pub,
-        initials: g.name.trim().split(/\s+/).slice(0, 2).map(w => w[0].toUpperCase()).join(''),
-        grad: ['#818cf8', '#7c3aed'], members: [me.id], unread: 0, time: 'now', last: '', read: true, pinnedIds: [], messages: [],
-      });
-      selectConvo(id);
+      const payload = { name: g.name, description: g.desc || '', is_private: !g.pub, member_ids: g.members || [] };
+      apiPost(R.createGroup || '/groups', payload).then(r => {
+        if (!r.ok) { toast('Could not create group', true); return; }
+        // server redirects; reload to get the new group in conversation list
+        location.href = R.chat || '/chat';
+      }).catch(() => toast('Could not create group', true));
     });
   }
 
@@ -870,7 +901,14 @@
       { ic: 'forward', label: 'Forward', fn: () => forwardMessage(c, msgId) },
       { ic: 'copy', label: 'Copy text', fn: () => { navigator.clipboard?.writeText(msg.text || ''); toast('Copied to clipboard'); } },
     ];
-    if (mine) items.push({ sep: true }, { ic: 'trash', label: 'Delete message', danger: true, fn: () => { msg.deleted = true; msg.text = 'This message was deleted'; delete msg.poll; delete msg.voice; delete msg.link; renderThread(c); toast('Message deleted'); } });
+    if (mine) items.push({ sep: true }, { ic: 'trash', label: 'Delete message', danger: true, fn: () => {
+      msg.deleted = true; msg.text = 'This message was deleted'; delete msg.poll; delete msg.voice; delete msg.link;
+      renderThread(c); toast('Message deleted');
+      if (msgId.startsWith('db')) {
+        const url = (R.deleteMessage || '/messages/{msg}').replace('{msg}', msgDbId(msgId));
+        apiDelete(url).catch(() => {});
+      }
+    } });
     else items.push({ sep: true }, { ic: 'flag', label: 'Report message', danger: true, fn: () => reportMessage(c, msg) });
     popMenu(anchor, items);
   }
@@ -892,7 +930,23 @@
         target.last = 'You: forwarded a message';
       });
       renderList($('#search').value);
+      if (msgId.startsWith('db')) {
+        const url = (R.forward || '/messages/{msg}/forward').replace('{msg}', msgDbId(msgId));
+        const convDbIds = ids.map(cid => +cid.replace(/^c/, ''));
+        apiPost(url, { conversation_ids: convDbIds }).catch(() => {});
+      }
+      toast('Forwarded to ' + ids.length + ' conversation' + (ids.length > 1 ? 's' : ''));
     });
+  }
+  function toggleBookmark(c, msgId, btn) {
+    const msg = c.messages.find(m => m.id === msgId); if (!msg) return;
+    msg.bookmarked = !msg.bookmarked;
+    if (btn) btn.classList.toggle('on', msg.bookmarked);
+    toast(msg.bookmarked ? 'Saved to bookmarks' : 'Removed from saved');
+    if (msgId.startsWith('db')) {
+      const url = (R.bookmark || '/messages/{msg}/bookmark').replace('{msg}', msgDbId(msgId));
+      apiPost(url, {}).catch(() => {});
+    }
   }
   function nowTime() { return new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
 
@@ -909,7 +963,14 @@
     const ta = $('textarea', box); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
     ta.style.height = ta.scrollHeight + 'px';
     ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; });
-    const save = () => { const v = ta.value.trim(); if (v) { msg.text = v; msg.edited = true; } renderThread(c); };
+    const save = () => {
+      const v = ta.value.trim(); if (!v) return;
+      msg.text = v; msg.edited = true; renderThread(c);
+      if (msgId.startsWith('db')) {
+        const url = (R.editMessage || '/messages/{msg}').replace('{msg}', msgDbId(msgId));
+        apiPatch(url, { body: v }).catch(() => {});
+      }
+    };
     $('.edit-save', box).addEventListener('click', save);
     $('.edit-cancel', box).addEventListener('click', () => renderThread(c));
     ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); } if (e.key === 'Escape') renderThread(c); });
