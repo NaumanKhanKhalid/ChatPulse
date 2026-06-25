@@ -1301,6 +1301,15 @@
         const c = activeId && conversations.find(x => x.id === activeId);
         if (c && (c.with === m.id || (c.members && c.members.includes(m.id)))) renderHeader(c);
       })
+      .listen('UserPresenceUpdated', e => {
+        const u = users[e.user_id];
+        if (!u) return;
+        u.online = e.is_online;
+        if (!e.is_online) u.last = 'just now';
+        renderList($('#search').value);
+        const c = activeId && conversations.find(x => x.id === activeId);
+        if (c && (c.with === e.user_id || (c.members && c.members.includes(e.user_id)))) renderHeader(c);
+      })
       .error(() => {});
   }
 
