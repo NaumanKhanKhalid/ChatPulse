@@ -647,6 +647,11 @@
     comp.innerHTML = '';
     renderThread(c); renderList($('#search').value);
     updateSendMic();
+    if (window.Echo) {
+      clearTimeout(typingTimer);
+      typingTimer = null;
+      window.Echo.private('conversation.' + convDbId(c)).whisper('stop-typing', { user_id: me.id });
+    }
     deliverMessage(c, msg);
   }
 
@@ -1326,6 +1331,12 @@
         const firstName = u ? u.name.split(' ')[0] : 'Someone';
         c.last = firstName + ': ' + (msg.body || (msg.type === 'voice' ? '🎤 Voice' : '📎 File'));
         c.time = t;
+        // Clear typing indicator for this sender immediately
+        if (c._typers && msg.user_id) {
+          delete c._typers[msg.user_id];
+          if (c._typingTimers?.[msg.user_id]) { clearTimeout(c._typingTimers[msg.user_id]); delete c._typingTimers[msg.user_id]; }
+          c.typing = Object.keys(c._typers).length > 0;
+        }
         if (c.id !== activeId) c.unread = (c.unread || 0) + 1;
         if (c.id === activeId) { renderThread(c); markConvRead(c); } else renderList($('#search').value);
         renderList($('#search').value);
@@ -1347,10 +1358,14 @@
       })
       .listenForWhisper('typing', e => {
         if (e.user_id === me.id) return;
-        c.typing = true;
-        clearTimeout(c._typingTimer);
-        c._typingTimer = setTimeout(() => {
-          c.typing = false;
+        c._typers = c._typers || {};
+        c._typers[e.user_id] = e.name;
+        c.typing = Object.keys(c._typers).length > 0;
+        clearTimeout(c._typingTimers?.[e.user_id]);
+        c._typingTimers = c._typingTimers || {};
+        c._typingTimers[e.user_id] = setTimeout(() => {
+          if (c._typers) delete c._typers[e.user_id];
+          c.typing = Object.keys(c._typers || {}).length > 0;
           if (c.id === activeId) renderThread(c);
           renderList($('#search').value);
         }, 3500);
@@ -1359,8 +1374,9 @@
       })
       .listenForWhisper('stop-typing', e => {
         if (e.user_id === me.id) return;
-        c.typing = false;
-        clearTimeout(c._typingTimer);
+        if (c._typers) delete c._typers[e.user_id];
+        if (c._typingTimers?.[e.user_id]) { clearTimeout(c._typingTimers[e.user_id]); delete c._typingTimers[e.user_id]; }
+        c.typing = Object.keys(c._typers || {}).length > 0;
         if (c.id === activeId) renderThread(c);
         renderList($('#search').value);
       });
