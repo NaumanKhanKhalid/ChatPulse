@@ -13,31 +13,9 @@
   Object.values(users).forEach(u => { if (u.id !== me.id) u.online = false; });
 
   /* ---------- avatar ---------- */
-  const _avatarPalette = [
-    ['#1a6b3a', '#10b981'], // green
-    ['#1a3a5c', '#3b82f6'], // blue
-    ['#3a1a3a', '#a855f7'], // purple
-    ['#3a2a1a', '#f59e0b'], // amber
-    ['#3a1a1a', '#ef4444'], // red
-    ['#1a3a3a', '#06b6d4'], // teal
-    ['#2a1a3a', '#8b5cf6'], // violet
-    ['#1a2a1a', '#22c55e'], // lime
-  ];
-  function _avatarColors(name) {
-    let hash = 0;
-    for (let i = 0; i < (name || '').length; i++) {
-      hash = (name.charCodeAt(i) + ((hash << 5) - hash)) | 0;
-    }
-    return _avatarPalette[Math.abs(hash) % _avatarPalette.length];
-  }
-  function _grad(u) {
-    if (u.grad && u.grad[0]) return u.grad;
-    return _avatarColors(u.name || u.initials || '?');
-  }
   function avatar(u, size) {
     const s = size || 36;
-    const [bg, fg] = _grad(u);
-    return `<div class="avatar" style="width:${s}px;height:${s}px;background:linear-gradient(135deg,${bg},${fg});font-size:${s * 0.38}px">${u.initials}</div>`;
+    return `<div class="avatar" style="width:${s}px;height:${s}px;background:linear-gradient(135deg,${u.grad[0]},${u.grad[1]});font-size:${s * 0.38}px">${u.initials}</div>`;
   }
   function convoMeta(c) {
     if (c.type === 'direct') { const u = users[c.with]; return { name: u.name, sub: '@' + u.username, av: u, online: u.online, status: u.status, u }; }
