@@ -716,8 +716,7 @@
     activeId = id; const c = conversations.find(x => x.id === id); c.unread = 0;
     cancelReply();
     // mark as read on backend
-    const markUrl = (R.markRead || '/conversations/{conv}/read').replace('{conv}', convDbId(c));
-    apiPost(markUrl, {}).catch(() => {});
+    markConvRead(c);
     $('.composer-wrap').style.display = '';
     renderList($('#search').value); renderHeader(c); renderThread(c); renderPanel(c);
     document.body.classList.add('mobile-chat');
@@ -735,6 +734,7 @@
       if (existNow) { selectConvo(existNow.id); return; }
       const newConv = { id: data.id, type: 'direct', with: uid, unread: 0, time: 'now', last: '', read: true, messages: [], pinnedIds: [] };
       conversations.unshift(newConv);
+      subscribeConv(newConv);
       selectConvo(data.id);
       toast('Chat started with ' + u.name.split(' ')[0]);
     }).catch(() => toast('Could not start chat', true));
@@ -1255,6 +1255,84 @@
     window.CPsimNet = setNet;
   }
 
+  /* ---------- Reverb real-time ---------- */
+  const subscribedConvs = new Set();
+
+  function initReverb() {
+    if (!window.Echo) return;
+
+    // Join presence channel — track who is online
+    window.Echo.join('app')
+      .here(members => {
+        members.forEach(m => { if (users[m.id]) users[m.id].online = true; });
+        renderList($('#search').value);
+      })
+      .joining(m => {
+        if (users[m.id]) { users[m.id].online = true; renderList($('#search').value); }
+        const c = activeId && conversations.find(x => x.id === activeId);
+        if (c && (c.with === m.id || (c.members && c.members.includes(m.id)))) renderHeader(c);
+      })
+      .leaving(m => {
+        if (users[m.id]) { users[m.id].online = false; users[m.id].last = 'just now'; renderList($('#search').value); }
+        const c = activeId && conversations.find(x => x.id === activeId);
+        if (c && (c.with === m.id || (c.members && c.members.includes(m.id)))) renderHeader(c);
+      })
+      .error(() => {});
+  }
+
+  function subscribeConv(c) {
+    if (!window.Echo || subscribedConvs.has(c.id)) return;
+    subscribedConvs.add(c.id);
+    const dbId = convDbId(c);
+
+    window.Echo.private('conversation.' + dbId)
+      // New message from another user
+      .listen('.MessageSent', e => {
+        const msg = e.message;
+        if (!msg || msg.user_id === me.id) return; // own message already in list
+        const existing = c.messages.find(m => m.id === 'db' + msg.id);
+        if (existing) return;
+        const t = msg.created_at ? new Date(msg.created_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : nowTime();
+        const cp = { id: 'db' + msg.id, user: msg.user_id, t, text: msg.body || '', status: null };
+        if (msg.parent_id) cp.reply = 'db' + msg.parent_id;
+        if (msg.forwarded_from_id) cp.forwarded = true;
+        if (msg.type === 'voice') { cp.voice = '0:30'; delete cp.text; }
+        if (msg.attachments && msg.attachments.length) {
+          const att = msg.attachments[0];
+          if (att.file_type && att.file_type.startsWith('image/')) cp.image = { src: att.url, name: att.original_name };
+          else cp.file = { name: att.original_name, size: att.formatted_size || '?' };
+        }
+        c.messages.push(cp);
+        const u = users[msg.user_id];
+        const firstName = u ? u.name.split(' ')[0] : 'Someone';
+        c.last = firstName + ': ' + (msg.body || (msg.type === 'voice' ? '🎤 Voice' : '📎 File'));
+        c.time = t;
+        if (c.id !== activeId) c.unread = (c.unread || 0) + 1;
+        if (c.id === activeId) { renderThread(c); markConvRead(c); } else renderList($('#search').value);
+        renderList($('#search').value);
+      })
+      // Message edited
+      .listen('.MessageUpdated', e => {
+        const msg = c.messages.find(m => m.id === 'db' + e.message.id);
+        if (msg) { msg.text = e.message.body; msg.edited = true; if (c.id === activeId) renderThread(c); }
+      })
+      // Message deleted
+      .listen('.MessageDeleted', e => {
+        const idx = c.messages.findIndex(m => m.id === 'db' + e.message_id);
+        if (idx > -1) { c.messages[idx].deleted = true; c.messages[idx].text = 'This message was deleted'; if (c.id === activeId) renderThread(c); }
+      })
+      // Reaction toggled
+      .listen('.ReactionToggled', e => {
+        const msg = c.messages.find(m => m.id === 'db' + e.message_id);
+        if (msg) { msg.reactions = e.reactions; if (c.id === activeId) renderThread(c); }
+      });
+  }
+
+  function markConvRead(c) {
+    const url = (R.markRead || '/conversations/{conv}/read').replace('{conv}', convDbId(c));
+    apiPost(url, {}).catch(() => {});
+  }
+
   /* ---------- boot ---------- */
   function initHeartbeat() {
     const url = R.heartbeat;
@@ -1269,6 +1347,8 @@
     initDark(); initRail(); initComposer(); initNet(); initThreadSearch(); initHeartbeat();
     listSkeleton(); threadSkeleton();
     setTimeout(() => {
+      initReverb();
+      conversations.forEach(c => subscribeConv(c));
       const c = conversations.find(x => x.id === activeId);
       renderList();
       if (c) { renderHeader(c); renderThread(c); renderPanel(c); }
