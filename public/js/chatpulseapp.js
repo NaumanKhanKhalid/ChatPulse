@@ -633,14 +633,36 @@
     deliverMessage(c, msg);
   }
 
-  /* ---------- delivery lifecycle ---------- */
+  /* ---------- delivery lifecycle — real backend ---------- */
+  const R = window.CP_ROUTES || {};
+  function apiPost(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+  function convDbId(c) { return c.id.replace(/^c/, ''); }
+
   function deliverMessage(c, msg) {
     if (!navigator.onLine) { msg.status = 'failed'; if (c.id === activeId) renderThread(c); renderList($('#search').value); return; }
-    setTimeout(() => { if (msg.status === 'sending') { msg.status = 'sent'; if (c.id === activeId) renderThread(c); } }, 400);
-    setTimeout(() => { if (msg.status === 'sent') { msg.status = 'delivered'; if (c.id === activeId) renderThread(c); } }, 1150);
-    setTimeout(() => { if (msg.status === 'delivered') { msg.status = 'read'; if (c.id === activeId) renderThread(c); } }, 2200);
-    simulateReply(c);
+    const url = (R.sendMessage || '/conversations/{conv}/messages').replace('{conv}', convDbId(c));
+    const body = { body: msg.text };
+    if (msg.reply) body.parent_id = msg.reply.replace(/^db/, '');
+    apiPost(url, body).then(res => {
+      if (!res.ok) { msg.status = 'failed'; if (c.id === activeId) renderThread(c); renderList($('#search').value); return; }
+      return res.json();
+    }).then(data => {
+      if (!data) return;
+      const saved = data.message;
+      msg.id = 'db' + saved.id;
+      msg.status = 'sent';
+      if (c.id === activeId) renderThread(c);
+      setTimeout(() => { msg.status = 'delivered'; if (c.id === activeId) renderThread(c); }, 800);
+      setTimeout(() => { msg.status = 'read';      if (c.id === activeId) renderThread(c); }, 2000);
+    }).catch(() => { msg.status = 'failed'; if (c.id === activeId) renderThread(c); renderList($('#search').value); });
   }
+
   function retryMessage(c, msgId) {
     const msg = c.messages.find(m => m.id === msgId); if (!msg) return;
     msg.status = 'sending'; msg.t = nowTime();
@@ -648,20 +670,6 @@
     deliverMessage(c, msg);
   }
 
-  const replyPool = ['Got it 🙌', 'Makes sense!', 'On it.', 'Perfect, thanks!', 'Haha yes 😄', 'Agreed 👍', 'Let\u2019s do it.'];
-  function simulateReply(c) {
-    if (c.type === 'direct' && !users[c.with].online) return;
-    const responder = c.type === 'direct' ? c.with : c.members.find(id => id !== me.id && users[id].online);
-    if (!responder) return;
-    setTimeout(() => {
-      const txt = replyPool[Math.floor(Math.random() * replyPool.length)];
-      const t = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      c.messages.push({ id: 'r' + Date.now(), user: responder, t, text: txt });
-      c.last = users[responder].name.split(' ')[0] + ': ' + txt; c.time = t;
-      if (c.id === activeId) renderThread(c);
-      renderList($('#search').value);
-    }, 2200);
-  }
 
   /* ---------- toast ---------- */
   function toast(msg, err) {
@@ -677,6 +685,9 @@
     backToChats();
     activeId = id; const c = conversations.find(x => x.id === id); c.unread = 0;
     cancelReply();
+    // mark as read on backend
+    const markUrl = (R.markRead || '/conversations/{conv}/read').replace('{conv}', convDbId(c));
+    apiPost(markUrl, {}).catch(() => {});
     $('.composer-wrap').style.display = '';
     renderList($('#search').value); renderHeader(c); renderThread(c); renderPanel(c);
     document.body.classList.add('mobile-chat');

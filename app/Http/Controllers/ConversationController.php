@@ -59,8 +59,11 @@ class ConversationController extends Controller
         ], JSON_UNESCAPED_UNICODE);
 
         $cpRoutes = json_encode([
-            'admin'    => route('admin.dashboard'),
-            'settings' => route('settings.index'),
+            'admin'       => route('admin.dashboard'),
+            'settings'    => route('settings.index'),
+            'sendMessage' => url('/conversations/{conv}/messages'),
+            'markRead'    => url('/conversations/{conv}/read'),
+            'csrf'        => csrf_token(),
         ]);
 
         $activeConvIdStr = $activeConvId ? 'c'.$activeConvId : null;
