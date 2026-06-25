@@ -288,12 +288,45 @@ window.CPOverlays = (function () {
 
   /* ============ CALL ============ */
   let timer = null;
-  function openCall(target, type, incoming) {
+  function openCall(target, type, incoming, convCpId, incomingCallId) {
     closeCall();
     const ov = document.createElement('div'); ov.className = 'call-ov';
     document.body.appendChild(ov);
     const grad = `linear-gradient(135deg,${target.grad[0]},${target.grad[1]})`;
     let mic = true, cam = type === 'video', screen = false, sec = 0;
+    const R = window.CP_ROUTES || {};
+    let callId = incomingCallId || null;
+    let pc = null, callChannel = null;
+
+    function postJson(url, data) {
+      return fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
+    }
+
+    function setupWebRTC(isOffering) {
+      pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      pc.onicecandidate = e => {
+        if (e.candidate && callId) {
+          const url = (R.callSignal || '/calls/{call}/signal').replace('{call}', callId);
+          postJson(url, { signal: { type: 'candidate', candidate: e.candidate } }).catch(() => {});
+        }
+      };
+      if (callChannel) {
+        callChannel.listen('CallSignal', e => {
+          if (!pc || !e.signal) return;
+          const sig = e.signal;
+          if (sig.type === 'offer') {
+            pc.setRemoteDescription(new RTCSessionDescription(sig)).then(() => pc.createAnswer()).then(ans => { pc.setLocalDescription(ans); const url = (R.callSignal || '/calls/{call}/signal').replace('{call}', callId); postJson(url, { signal: ans }).catch(() => {}); }).catch(() => {});
+          } else if (sig.type === 'answer') {
+            pc.setRemoteDescription(new RTCSessionDescription(sig)).catch(() => {});
+          } else if (sig.type === 'candidate' && sig.candidate) {
+            pc.addIceCandidate(new RTCIceCandidate(sig.candidate)).catch(() => {});
+          }
+        });
+      }
+      if (isOffering) {
+        pc.createOffer().then(offer => { pc.setLocalDescription(offer); const url = (R.callSignal || '/calls/{call}/signal').replace('{call}', callId); postJson(url, { signal: offer }).catch(() => {}); }).catch(() => {});
+      }
+    }
 
     function ringing() {
       ov.innerHTML = `
@@ -304,10 +337,34 @@ window.CPOverlays = (function () {
           <div class="cra"><button class="cc end" data-decline><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M6.2 4.5 8 4l1.6 3.4-1.5 1.3a11 11 0 0 0 4.7 4.7l1.3-1.5L17.5 15l-.5 1.8c-.2.7-.9 1.1-1.6 1A14 14 0 0 1 4.2 6.6c-.1-.7.3-1.4 1-1.6Z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round" transform="rotate(135 12 12)"/></svg></button>Decline</div>
           <div class="cra"><button class="cc accept" data-accept><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M6.2 4.5 8 4l1.6 3.4-1.5 1.3a11 11 0 0 0 4.7 4.7l1.3-1.5L17.5 15l-.5 1.8c-.2.7-.9 1.1-1.6 1A14 14 0 0 1 4.2 6.6c-.1-.7.3-1.4 1-1.6Z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg></button>Accept</div>
         </div>` : `<div class="call-controls"><button class="cc end" data-end><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M6.2 4.5 8 4l1.6 3.4-1.5 1.3a11 11 0 0 0 4.7 4.7l1.3-1.5L17.5 15l-.5 1.8c-.2.7-.9 1.1-1.6 1A14 14 0 0 1 4.2 6.6c-.1-.7.3-1.4 1-1.6Z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round" transform="rotate(135 12 12)"/></svg></button></div>`}`;
-      ov.querySelector('[data-accept]')?.addEventListener('click', connected);
-      ov.querySelector('[data-decline]')?.addEventListener('click', closeCall);
-      ov.querySelector('[data-end]')?.addEventListener('click', closeCall);
-      if (!incoming) setTimeout(() => { if (document.body.contains(ov)) connected(); }, 1800);
+      ov.querySelector('[data-accept]')?.addEventListener('click', () => {
+        const url = (R.callAnswer || '/calls/{call}/answer').replace('{call}', callId);
+        postJson(url, {}).then(() => {
+          if (window.Echo && callId) { callChannel = window.Echo.private('call.' + callId); callChannel.listen('CallEnded', () => closeCall()); }
+          setupWebRTC(false);
+          connected();
+        }).catch(() => connected());
+      });
+      ov.querySelector('[data-decline]')?.addEventListener('click', () => {
+        if (callId) { const url = (R.callDecline || '/calls/{call}/decline').replace('{call}', callId); postJson(url, {}).catch(() => {}); }
+        closeCall();
+      });
+      ov.querySelector('[data-end]')?.addEventListener('click', () => {
+        if (callId) { const url = (R.callEnd || '/calls/{call}/end').replace('{call}', callId); postJson(url, {}).catch(() => {}); }
+        closeCall();
+      });
+      if (!incoming && convCpId) {
+        const convDbId = convCpId.replace(/^c/, '');
+        const initiateUrl = (R.callInitiate || '/conversations/{conv}/call').replace('{conv}', convDbId);
+        postJson(initiateUrl, { type }).then(data => {
+          callId = data.call?.id || data.id || null;
+          if (window.Echo && callId) {
+            callChannel = window.Echo.private('call.' + callId);
+            callChannel.listen('CallAnswered', () => { setupWebRTC(true); connected(); });
+            callChannel.listen('CallEnded', () => closeCall());
+          }
+        }).catch(() => {});
+      }
     }
 
     function connected() {
@@ -330,7 +387,7 @@ window.CPOverlays = (function () {
         ov.querySelector('[data-mic]').addEventListener('click', () => { mic = !mic; paint(); });
         ov.querySelector('[data-cam]')?.addEventListener('click', () => { cam = !cam; paint(); });
         ov.querySelector('[data-screen]').addEventListener('click', () => { screen = !screen; paint(); });
-        ov.querySelector('[data-end]').addEventListener('click', closeCall);
+        ov.querySelector('[data-end]').addEventListener('click', () => { if (callId) { const url = (R.callEnd || '/calls/{call}/end').replace('{call}', callId); postJson(url, {}).catch(() => {}); } closeCall(); });
       }
       paint();
       timer = setInterval(() => { sec++; const t = ov.querySelector('#callTimer'); if (t) t.textContent = fmt(); }, 1000);

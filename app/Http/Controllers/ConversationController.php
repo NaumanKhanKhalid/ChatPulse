@@ -79,6 +79,14 @@ class ConversationController extends Controller
             'pollStore'    => url('/conversations/{conv}/polls'),
             'scheduleMsg'  => url('/conversations/{conv}/messages'),
             'scheduleDel'  => url('/scheduled/{msg}'),
+            'callInitiate' => url('/conversations/{conv}/call'),
+            'callAnswer'   => url('/calls/{call}/answer'),
+            'callDecline'  => url('/calls/{call}/decline'),
+            'callEnd'      => url('/calls/{call}/end'),
+            'callSignal'   => url('/calls/{call}/signal'),
+            'notifFetch'   => route('notifications.fetch'),
+            'notifRead'    => url('/notifications/{notif}/read'),
+            'notifReadAll' => route('notifications.read-all'),
             'csrf'         => csrf_token(),
         ]);
 

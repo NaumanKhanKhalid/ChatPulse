@@ -219,8 +219,8 @@
     $('#chatHeader .hdr-id')?.addEventListener('click', openDetail);
     $('#chatHeader .hdr-info')?.addEventListener('click', openDetail);
     const ct = callTarget(c);
-    $('#callAudio')?.addEventListener('click', () => CPOverlays.openCall(ct, 'audio', false));
-    $('#callVideo')?.addEventListener('click', () => CPOverlays.openCall(ct, 'video', false));
+    $('#callAudio')?.addEventListener('click', () => CPOverlays.openCall(ct, 'audio', false, c.id));
+    $('#callVideo')?.addEventListener('click', () => CPOverlays.openCall(ct, 'video', false, c.id));
   }
   function callTarget(c) { return c.type === 'direct' ? users[c.with] : { name: c.name, initials: c.initials, grad: c.grad }; }
 
@@ -458,8 +458,8 @@
     $$('#rightPanel [data-uid]').forEach(b => b.addEventListener('click', () => CPOverlays.openProfile(+b.dataset.uid)));
     if (c.type === 'direct') {
       const peer = users[c.with];
-      $('#qCall')?.addEventListener('click', () => CPOverlays.openCall(peer, 'audio', true));
-      $('#qVideo')?.addEventListener('click', () => CPOverlays.openCall(peer, 'video', true));
+      $('#qCall')?.addEventListener('click', () => CPOverlays.openCall(peer, 'audio', true, c.id));
+      $('#qVideo')?.addEventListener('click', () => CPOverlays.openCall(peer, 'video', true, c.id));
     }
     $('#qSearch')?.addEventListener('click', openThreadSearch);
   }
@@ -940,37 +940,74 @@
 
   /* ---------- voice recorder ---------- */
   let recTimer = null, recStart = 0, recSec = 0;
+  let _mediaRecorder = null, _recChunks = [];
+
   function initVoiceRecorder() {
     $('#micBtn').addEventListener('click', startRecording);
     $('#recCancel').addEventListener('click', () => stopRecording(false));
     $('#recSend').addEventListener('click', () => stopRecording(true));
   }
+
   function startRecording() {
     if (!activeId) { toast('Open a conversation first'); return; }
-    recSec = 0; recStart = Date.now();
-    $('#composer-tools').style.display = 'none';
-    $('#recBar').classList.add('show');
-    $('#recTime').textContent = '0:00';
-    recTimer = setInterval(() => {
-      recSec = Math.floor((Date.now() - recStart) / 1000);
-      $('#recTime').textContent = fmtDur(recSec);
-    }, 250);
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      _recChunks = [];
+      _mediaRecorder = new MediaRecorder(stream);
+      _mediaRecorder.ondataavailable = e => { if (e.data.size > 0) _recChunks.push(e.data); };
+      _mediaRecorder.start(100);
+      recSec = 0; recStart = Date.now();
+      $('#composer-tools').style.display = 'none';
+      $('#recBar').classList.add('show');
+      $('#recTime').textContent = '0:00';
+      recTimer = setInterval(() => {
+        recSec = Math.floor((Date.now() - recStart) / 1000);
+        $('#recTime').textContent = fmtDur(recSec);
+      }, 250);
+    }).catch(() => toast('Microphone access denied'));
   }
+
   function stopRecording(sendIt) {
     clearInterval(recTimer); recTimer = null;
     $('#recBar').classList.remove('show');
     $('#composer-tools').style.display = '';
+    if (!_mediaRecorder) { if (!sendIt) toast('Recording discarded'); return; }
     const secs = Math.max(1, Math.round((Date.now() - recStart) / 1000));
-    if (sendIt) sendVoice(secs);
-    else toast('Recording discarded');
+    _mediaRecorder.onstop = () => {
+      const blob = new Blob(_recChunks, { type: 'audio/webm' });
+      _mediaRecorder.stream.getTracks().forEach(t => t.stop());
+      _mediaRecorder = null; _recChunks = [];
+      if (sendIt) sendVoice(blob, secs);
+    };
+    _mediaRecorder.stop();
+    if (!sendIt) toast('Recording discarded');
   }
-  function sendVoice(secs) {
+
+  function sendVoice(blob, secs) {
     const c = conversations.find(x => x.id === activeId);
-    const msg = { id: 'v' + Date.now(), user: me.id, t: nowTime(), voice: fmtDur(secs), status: 'sending' };
-    c.messages.push(msg);
-    c.last = 'You: 🎤 Voice message'; c.time = nowTime();
+    if (!c) return;
+    const msg = { id: 'v' + Date.now(), user: me.id, t: nowTime(), voice: fmtDur(secs), status: 'sending', uploading: true, progress: 0, _voiceBlob: blob };
+    c.messages.push(msg); c.last = 'You: 🎤 Voice message'; c.time = nowTime();
     renderThread(c); renderList($('#search').value);
-    deliverMessage(c, msg);
+    const R = window.CP_ROUTES || {};
+    const convDbId = c.id.replace(/^c/, '');
+    const url = (R.sendMessage || '/conversations/{conv}/messages').replace('{conv}', convDbId);
+    const fd = new FormData();
+    fd.append('attachments[]', blob, 'voice-' + Date.now() + '.webm');
+    fd.append('type', 'voice');
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.setRequestHeader('X-CSRF-TOKEN', R.csrf || '');
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.upload.onprogress = e => { if (e.lengthComputable) { msg.progress = (e.loaded / e.total) * 100; updateUploadProgress(c, msg); } };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const data = JSON.parse(xhr.responseText);
+        msg.id = 'db' + data.message.id; msg.uploading = false; msg.status = 'sent';
+        if (c.id === activeId) renderThread(c);
+      } else { msg.uploading = false; msg.uploadFailed = true; msg.status = 'failed'; if (c.id === activeId) renderThread(c); }
+    };
+    xhr.onerror = () => { msg.uploading = false; msg.uploadFailed = true; msg.status = 'failed'; if (c.id === activeId) renderThread(c); };
+    xhr.send(fd);
   }
 
   /* ---------- schedule a message ---------- */
@@ -1137,7 +1174,7 @@
   function handleFiles(files) {
     [...files].forEach(f => {
       const isImg = f.type.startsWith('image/');
-      const att = { name: f.name, size: fmtSize(f.size), isImg, src: null };
+      const att = { name: f.name, size: fmtSize(f.size), isImg, src: null, _file: f };
       if (isImg) { const url = URL.createObjectURL(f); att.src = url; }
       pendingAtt.push(att);
     });
@@ -1158,7 +1195,7 @@
   }
   function flushAttachments(c) {
     pendingAtt.forEach(a => {
-      const m = { id: 'a' + Date.now() + Math.random().toString(36).slice(2, 5), user: me.id, t: nowTime(), uploading: true, progress: 0, status: 'sending' };
+      const m = { id: 'a' + Date.now() + Math.random().toString(36).slice(2, 5), user: me.id, t: nowTime(), uploading: true, progress: 0, status: 'sending', _file: a._file };
       if (a.isImg) { m.image = { src: a.src, name: a.name }; c.last = 'You: 📷 Photo'; }
       else { m.file = { name: a.name, size: a.size }; c.last = 'You: 📎 ' + a.name; }
       c.messages.push(m);
@@ -1169,16 +1206,25 @@
   function startUpload(c, m) {
     if (!navigator.onLine) { failUpload(c, m); return; }
     m.uploading = true; m.uploadFailed = false;
-    clearInterval(m._iv);
-    m._iv = setInterval(() => {
-      m.progress = Math.min(100, (m.progress || 0) + (6 + Math.random() * 14));
-      if (m.progress >= 100) {
-        m.progress = 100; clearInterval(m._iv);
-        m.uploading = false; m.status = 'sending';
+    const R = window.CP_ROUTES || {};
+    const convDbId = c.id.replace(/^c/, '');
+    const url = (R.sendMessage || '/conversations/{conv}/messages').replace('{conv}', convDbId);
+    const fd = new FormData();
+    if (m._file) fd.append('attachments[]', m._file, m._file.name);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.setRequestHeader('X-CSRF-TOKEN', R.csrf || '');
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.upload.onprogress = e => { if (e.lengthComputable) { m.progress = (e.loaded / e.total) * 100; updateUploadProgress(c, m); } };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const data = JSON.parse(xhr.responseText);
+        m.id = 'db' + data.message.id; m.uploading = false; m.status = 'sent';
         if (c.id === activeId) renderThread(c);
-        deliverMessage(c, m);
-      } else { updateUploadProgress(c, m); }
-    }, 220);
+      } else { failUpload(c, m); }
+    };
+    xhr.onerror = () => { failUpload(c, m); };
+    xhr.send(fd);
   }
   function updateUploadProgress(c, m) {
     if (c.id !== activeId) return;
@@ -1384,6 +1430,12 @@
         if (c && (c.with === e.user_id || (c.members && c.members.includes(e.user_id)))) renderHeader(c);
       })
       .error(() => {});
+
+    window.Echo.private('user.' + me.id)
+      .listen('CallInitiated', e => {
+        const caller = users[e.caller.id] || { name: e.caller.name, initials: e.caller.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2), grad: ['#1a6b3a','#10b981'] };
+        CPOverlays.openCall(caller, e.type, true, 'c' + e.conversation_id, e.call_id);
+      });
   }
 
   function subscribeConv(c) {
