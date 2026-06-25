@@ -837,6 +837,25 @@
   }
 
   /* ---------- composer ---------- */
+  /* ---------- typing indicator ---------- */
+  let typingTimer = null;
+  const typingConvChannels = {};
+
+  function sendTypingWhisper() {
+    if (!window.Echo || !activeId) return;
+    const c = conversations.find(x => x.id === activeId);
+    if (!c) return;
+    const dbId = convDbId(c);
+    // whisper on the private channel
+    const ch = window.Echo.private('conversation.' + dbId);
+    ch.whisper('typing', { user_id: me.id, name: me.name.split(' ')[0] });
+    // auto-clear typing on this end after 3s of no input
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => {
+      ch.whisper('stop-typing', { user_id: me.id });
+    }, 3000);
+  }
+
   function initComposer() {
     $('#sendBtn').addEventListener('click', send);
     $('#composer').addEventListener('keydown', e => {
@@ -844,7 +863,7 @@
       const enterSends = !window.CP.prefs || CP.prefs.enterToSend;
       if (enterSends ? !e.shiftKey : (e.metaKey || e.ctrlKey)) { e.preventDefault(); send(); }
     });
-    $('#composer').addEventListener('input', updateSendMic);
+    $('#composer').addEventListener('input', () => { updateSendMic(); sendTypingWhisper(); });
     $('#search').addEventListener('input', e => renderList(e.target.value));
     $('.list-new')?.addEventListener('click', startDraft);
     initVoiceRecorder();
@@ -1325,6 +1344,25 @@
       .listen('ReactionToggled', e => {
         const msg = c.messages.find(m => m.id === 'db' + e.message_id);
         if (msg) { msg.reactions = e.reactions; if (c.id === activeId) renderThread(c); }
+      })
+      .listenForWhisper('typing', e => {
+        if (e.user_id === me.id) return;
+        c.typing = true;
+        clearTimeout(c._typingTimer);
+        c._typingTimer = setTimeout(() => {
+          c.typing = false;
+          if (c.id === activeId) renderThread(c);
+          renderList($('#search').value);
+        }, 3500);
+        if (c.id === activeId) renderThread(c);
+        renderList($('#search').value);
+      })
+      .listenForWhisper('stop-typing', e => {
+        if (e.user_id === me.id) return;
+        c.typing = false;
+        clearTimeout(c._typingTimer);
+        if (c.id === activeId) renderThread(c);
+        renderList($('#search').value);
       });
   }
 
