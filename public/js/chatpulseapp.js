@@ -384,14 +384,60 @@
     </div>`;
   }
   function statusTick(msg) {
-    const s = msg.status || 'read';
+    const s = msg.status || 'sent';
     if (s === 'failed') return `<button class="b-retry" data-retry="${msg.id}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v5M12 16h.01" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Not delivered · Retry</button>`;
     const t = esc(msg.t || '');
     let ic;
-    if (s === 'sending') ic = `<svg class="tick sending" width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7"/><path d="M12 8v4.2l2.6 1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
-    else if (s === 'sent') ic = `<svg class="tick" width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="m5 12.5 4 4 10-10" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    else ic = `<svg class="tick ${s === 'read' ? 'read' : ''}" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m3 13 3.2 3.2L13 9.5M11 13l3 3 7-7.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    return `<span class="b-time-s">${t}</span><span class="b-status-ic" title="${s}">${ic}</span>`;
+    if (s === 'sending') {
+      ic = `<svg class="tick sending" width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7"/><path d="M12 8v4.2l2.6 1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+    } else if (s === 'sent') {
+      // single grey tick
+      ic = `<svg class="tick" width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="m5 12.5 4 4 10-10" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    } else if (s === 'delivered') {
+      // double grey tick
+      ic = `<svg class="tick" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m3 13 3.2 3.2L13 9.5M11 13l3 3 7-7.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    } else {
+      // read — double blue tick
+      ic = `<svg class="tick read" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m3 13 3.2 3.2L13 9.5M11 13l3 3 7-7.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    }
+    return `<span class="b-time-s">${t}</span><span class="b-status-ic msg-info-trigger" data-msginfo="${msg.id}" title="${s}">${ic}</span>`;
+  }
+
+  function openMsgInfo(c, msgId) {
+    const msg = c.messages.find(m => m.id === msgId); if (!msg) return;
+    document.querySelectorAll('.msg-info-panel').forEach(p => p.remove());
+    const el = $(`[data-msg="${msgId}"]`); if (!el) return;
+    const s = msg.status || 'sent';
+    const rows = [
+      { label: 'Sent', time: msg.t, ic: '#10b981', always: true },
+      { label: 'Delivered', time: msg.deliveredAt || null, ic: '#6b7280', always: false },
+      { label: 'Read', time: msg.readAt || null, ic: '#3b82f6', always: false },
+    ];
+    const panel = document.createElement('div');
+    panel.className = 'msg-info-panel';
+    panel.innerHTML = `
+      <div class="mip-head">Message Info</div>
+      ${rows.map(r => {
+        const done = r.label === 'Sent' || (r.label === 'Delivered' && (s === 'delivered' || s === 'read')) || (r.label === 'Read' && s === 'read');
+        const col = done ? r.ic : 'var(--text3)';
+        return `<div class="mip-row ${done ? 'done' : ''}">
+          <span class="mip-dot" style="background:${col}"></span>
+          <span class="mip-label">${r.label}</span>
+          <span class="mip-time">${done ? (r.time || '—') : '—'}</span>
+        </div>`;
+      }).join('')}`;
+    document.body.appendChild(panel);
+    const msgR = el.getBoundingClientRect();
+    const pw = 200, ph = 140;
+    let left = msgR.right + 8;
+    let top = msgR.top;
+    if (left + pw > window.innerWidth) left = msgR.left - pw - 8;
+    if (top + ph > window.innerHeight) top = window.innerHeight - ph - 10;
+    panel.style.left = Math.max(8, left) + 'px';
+    panel.style.top = Math.max(8, top) + 'px';
+    setTimeout(() => document.addEventListener('click', function h(e) {
+      if (!panel.contains(e.target)) { panel.remove(); document.removeEventListener('click', h); }
+    }), 0);
   }
 
   function linkify(text) {
@@ -537,6 +583,7 @@
     $$('[data-spamshow]').forEach(b => b.addEventListener('click', () => { const m = c.messages.find(x => x.id === b.dataset.spamshow); if (m) { m.revealed = true; renderThread(c); } }));
     $$('[data-spamreport]').forEach(b => b.addEventListener('click', () => { const m = c.messages.find(x => x.id === b.dataset.spamreport); if (m) reportMessage(c, m); }));
     $$('[data-lightbox]').forEach(b => b.addEventListener('click', () => openLightbox(b.dataset.lightbox)));
+    $$('.msg-info-trigger[data-msginfo]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openMsgInfo(c, b.dataset.msginfo); }));
   }
   function openLightbox(src) {
     const ov = document.createElement('div'); ov.className = 'lightbox-ov';
@@ -1474,6 +1521,10 @@
         if (c.id !== activeId) c.unread = (c.unread || 0) + 1;
         if (c.id === activeId) { renderThread(c); markConvRead(c); } else renderList($('#search').value);
         renderList($('#search').value);
+        // Whisper delivered receipt back to sender
+        if (window.Echo) {
+          window.Echo.private('conversation.' + dbId).whisper('message-delivered', { message_id: msg.id, user_id: me.id, at: nowTime() });
+        }
       })
       // Message edited
       .listen('MessageUpdated', e => {
@@ -1515,10 +1566,23 @@
         renderList($('#search').value);
       })
       .listen('ConversationRead', e => {
-        // Another user read this conversation — mark our messages as read
         if (e.user_id === me.id) return;
-        c.messages.forEach(m => { if (m.user === me.id && m.status && m.status !== 'read') m.status = 'read'; });
+        c.messages.forEach(m => {
+          if (m.user === me.id && m.status && m.status !== 'read') {
+            m.status = 'read';
+            m.readAt = e.read_at ? new Date(e.read_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : nowTime();
+          }
+        });
         if (c.id === activeId) renderThread(c);
+      })
+      .listenForWhisper('message-delivered', e => {
+        const msg = c.messages.find(m => m.id === 'db' + e.message_id || m.id === e.message_id);
+        if (!msg || msg.user !== me.id) return;
+        if (msg.status === 'sent') {
+          msg.status = 'delivered';
+          msg.deliveredAt = e.at || nowTime();
+          if (c.id === activeId) renderThread(c);
+        }
       });
   }
 
