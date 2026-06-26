@@ -354,7 +354,7 @@
     if (msg.forwarded) body += `<div class="fwd-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M13 7l5 5-5 5M18 12H7a3 3 0 0 0-3 3v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Forwarded</div>`;
     if (msg.reply) {
       const r = c.messages.find(x => x.id === msg.reply); const ru = r ? users[r.user] : null;
-      if (r) body += `<div class="reply-quote"><span class="reply-bar"></span><div><span class="reply-name">${esc(ru.name)}</span><span class="reply-text">${esc((r.text || '🎤 Voice message').slice(0, 60))}</span></div></div>`;
+      if (r) body += `<div class="reply-quote"><span class="reply-bar"></span><div class="reply-inner"><span class="reply-name">${esc(ru?.name || 'Unknown')}</span><span class="reply-text">${esc((r.text || '🎤 Voice message').slice(0, 80))}</span></div></div>`;
     }
     if (msg.deleted) body += `<div class="b-text deleted"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><path d="M9 9l6 6m0-6-6 6" stroke="currentColor" stroke-width="1.6"/></svg>This message was deleted</div>`;
     else if (msg.text) body += `<div class="b-text">${linkify(msg.text)}${msg.reported ? '<span class="reported-tag">reported</span>' : ''}${msg.edited ? '<span class="edited-tag">edited</span>' : ''}</div>`;
