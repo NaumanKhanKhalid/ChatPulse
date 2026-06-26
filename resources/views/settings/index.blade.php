@@ -14,7 +14,7 @@
         <div class="avatar" style="width:42px;height:42px;background:linear-gradient(135deg,{{ $grad[0] }},{{ $grad[1] }});font-size:16px;flex-shrink:0">{{ $initials }}</div>
         <div class="sset-who-tx">
             <span class="sset-who-name">{{ $u->name }}</span>
-            <span class="sset-who-un">@{{ $username }}</span>
+            <span class="sset-who-un">&#64;{{ $username }}</span>
         </div>
     </div>
 
@@ -64,7 +64,7 @@
             <div class="avatar" style="width:54px;height:54px;background:linear-gradient(135deg,{{ $grad[0] }},{{ $grad[1] }});font-size:20px;flex-shrink:0">{{ $initials }}</div>
             <div>
                 <div class="sset-hero-name">{{ $u->name }}</div>
-                <div class="sset-hero-un">@{{ $username }}</div>
+                <div class="sset-hero-un">&#64;{{ $username }}</div>
                 @if($u->bio)<div class="sset-hero-bio">{{ $u->bio }}</div>@endif
             </div>
         </div>
