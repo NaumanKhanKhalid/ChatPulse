@@ -1,4 +1,4 @@
-FROM php:8.2-cli
+FROM php:8.2-cli-bookworm
 
 RUN apt-get update && apt-get install -y \
     git \
@@ -11,8 +11,12 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     nodejs \
     npm \
-    && docker-php-ext-configure pcntl \
-&& docker-php-ext-install pcntl pdo pdo_mysql mbstring zip
+    && docker-php-ext-install \
+        pcntl \
+        pdo \
+        pdo_mysql \
+        mbstring \
+        zip
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -28,6 +32,11 @@ RUN npm run build
 
 RUN chmod +x docker/*.sh
 
+# Debug (temporary)
+RUN php -v
+RUN php -m
+RUN php --ri pcntl || true
+
 EXPOSE 8080
 
-CMD ["bash","docker/start-app.sh"]
+CMD ["bash", "docker/start-app.sh"]
