@@ -367,15 +367,28 @@
 
     const reax = renderReax(msg);
     const pin = msg.pinned ? `<span class="pin-flag"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/><path d="M12 14v7" stroke="currentColor" stroke-width="1.6"/></svg>Pinned</span>` : '';
-    const foot = (mine && !msg.deleted) ? (msg.uploading ? `<div class="b-foot"><span class="up-status">Uploading…</span></div>` : (msg.uploadFailed ? '' : `<div class="b-foot">${statusTick(msg)}</div>`)) : '';
+
+    // Inject time+tick inside the text bubble (WhatsApp style float)
+    const footInner = (mine && !msg.deleted && !msg.uploading && !msg.uploadFailed)
+      ? `<span class="b-foot">${statusTick(msg)}</span>` : '';
+    const uploadFoot = (mine && msg.uploading) ? `<div class="b-foot-out"><span class="up-status">Uploading…</span></div>` : '';
+
+    // Append foot into b-text if text message, else show below
+    let finalBody = body;
+    if (footInner) {
+      // inject into .b-text closing tag so it floats inside the bubble
+      finalBody = body.replace(/(<div class="b-text"[^>]*>)([\s\S]*)(<\/div>)(?=[^<]*$)/, (_, open, content, close) => `${open}${content}${footInner}${close}`);
+      // if no b-text (voice/file/poll only), append outside
+      if (finalBody === body) finalBody = body + `<div class="b-foot-out">${footInner}</div>`;
+    }
 
     return `
     <div class="msg ${grouped ? 'grouped' : ''} ${mine ? 'mine' : ''} ${msg.status === 'failed' ? 'failed' : ''}" data-msg="${msg.id}">
       <div class="b-av">${av}</div>
       <div class="b-body">
         ${pin}${head}
-        ${body}
-        ${foot}
+        ${finalBody}
+        ${uploadFoot}
         ${reax}
       </div>
       <div class="msg-tools">
