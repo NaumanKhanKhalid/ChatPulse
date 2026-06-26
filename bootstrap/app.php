@@ -14,20 +14,29 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias([
-            'banned.ip' => \App\Http\Middleware\CheckBannedIP::class,
-            'banned.user' => \App\Http\Middleware\CheckBannedUser::class,
-            'not.guest' => \App\Http\Middleware\EnsureNotGuest::class,
-            'admin' => \App\Http\Middleware\EnsureAdmin::class,
-            'group.member' => \App\Http\Middleware\EnsureGroupMember::class,
-            'conversation.participant' => \App\Http\Middleware\EnsureConversationParticipant::class,
-            'horizon.access' => \App\Http\Middleware\EnsureHorizonAccess::class,
-        ]);
 
-        $middleware->web(append: [
-            \App\Http\Middleware\CheckBannedIP::class,
-        ]);
-    })
+    $middleware->trustProxies(
+        at: '*',
+        headers: Request::HEADER_X_FORWARDED_FOR
+            | Request::HEADER_X_FORWARDED_HOST
+            | Request::HEADER_X_FORWARDED_PORT
+            | Request::HEADER_X_FORWARDED_PROTO
+    );
+
+    $middleware->alias([
+        'banned.ip' => \App\Http\Middleware\CheckBannedIP::class,
+        'banned.user' => \App\Http\Middleware\CheckBannedUser::class,
+        'not.guest' => \App\Http\Middleware\EnsureNotGuest::class,
+        'admin' => \App\Http\Middleware\EnsureAdmin::class,
+        'group.member' => \App\Http\Middleware\EnsureGroupMember::class,
+        'conversation.participant' => \App\Http\Middleware\EnsureConversationParticipant::class,
+        'horizon.access' => \App\Http\Middleware\EnsureHorizonAccess::class,
+    ]);
+
+    $middleware->web(append: [
+        \App\Http\Middleware\CheckBannedIP::class,
+    ]);
+})
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
