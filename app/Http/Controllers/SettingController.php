@@ -30,4 +30,14 @@ class SettingController extends Controller
         auth()->user()->update($request->only('email_notifications', 'email_digest'));
         return response()->json(['success' => true]);
     }
+
+    public function updatePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'current_password'      => ['required', 'current_password'],
+            'password'              => ['required', 'min:8', 'confirmed'],
+        ]);
+        auth()->user()->update(['password' => bcrypt($request->password)]);
+        return response()->json(['success' => true]);
+    }
 }

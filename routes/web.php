@@ -105,6 +105,7 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::patch('/settings/dark-mode', [SettingController::class, 'toggleDarkMode'])->name('settings.dark-mode');
         Route::patch('/settings/notifications', [SettingController::class, 'updateNotifications'])->name('settings.notifications');
+        Route::patch('/settings/password', [SettingController::class, 'updatePassword'])->name('settings.password');
     });
 
     // Scheduled messages
