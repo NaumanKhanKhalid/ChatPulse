@@ -291,6 +291,7 @@ Alpine.data('chatConversation', (conversationId, currentUserId, initialMessages)
     },
 
     async sendMessage() {
+        
         const body = this.newMessage.trim();
         if (!body && this.selectedFiles.length === 0) return;
 

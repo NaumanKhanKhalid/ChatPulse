@@ -18,7 +18,7 @@ class LoginController extends Controller
 
     public function store(LoginRequest $request, PresenceService $presence): RedirectResponse
     {
-        if (!Auth::attempt($request->only('email','password'), $request->boolean('remember'))) {
+        if (!Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             return back()->withErrors(['email' => 'Invalid credentials.'])->withInput();
         }
 

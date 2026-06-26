@@ -35,10 +35,8 @@ class GuestLoginController extends Controller
         $request->session()->regenerate();
         $presence->markOnline($user);
 
-        // Auto-join public groups so guest has conversations to see
-        $publicGroups = Conversation::where('type', 'group')
-            ->where('is_private', false)
-            ->get();
+        $publicGroups = Conversation::where('type', 'group')->where('is_private', false)->get();
+
         foreach ($publicGroups as $group) {
             ConversationParticipant::firstOrCreate([
                 'conversation_id' => $group->id,
@@ -46,7 +44,6 @@ class GuestLoginController extends Controller
             ], ['role' => 'member', 'joined_at' => now()]);
         }
 
-        // Create a DM with admin so guest has someone to message
         $admin = User::where('role', 'admin')->first();
         if ($admin) {
             $dm = Conversation::create(['type' => 'direct', 'is_private' => true]);
