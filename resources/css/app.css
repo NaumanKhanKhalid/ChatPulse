@@ -185,9 +185,11 @@ html.dark .reax-pill.mine { background: rgba(16,185,129,.16); }
 .reax-add { width: 26px; height: 24px; border-radius: 99px; display: grid; place-items: center; color: var(--text3); background: var(--input); cursor: pointer; }
 .reax-add:hover { color: var(--text); }
 
-.msg-tools { position: absolute; bottom: 100%; right: 60px; margin-bottom: 4px; display: flex; gap: 1px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 2px; box-shadow: 0 4px 16px -4px rgba(0,0,0,.18); opacity: 0; pointer-events: none; transition: opacity .12s; z-index: 10; }
+.msg-tools { position: absolute; bottom: 100%; right: 60px; margin-bottom: 2px; display: flex; gap: 1px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 2px; box-shadow: 0 4px 16px -4px rgba(0,0,0,.18); opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 10; }
 .msg.mine .msg-tools { right: auto; left: 60px; }
-.msg:hover .msg-tools { opacity: 1; pointer-events: auto; }
+/* Stay visible when hovering the message OR the toolbar itself */
+.msg:hover .msg-tools,
+.msg-tools:hover { opacity: 1; pointer-events: auto; }
 .tbtn { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: var(--text2); }
 .tbtn:hover { background: var(--hover); color: var(--text); }
 .tbtn.on { color: var(--primary); }
