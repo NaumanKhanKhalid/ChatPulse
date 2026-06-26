@@ -2,7 +2,32 @@
   "hash": "d3090ab2",
   "configHash": "e130d6a6",
   "lockfileHash": "9a7a5342",
-  "browserHash": "7f5d98c8",
-  "optimized": {},
+  "browserHash": "786f670c",
+  "optimized": {
+    "@alpinejs/persist": {
+      "src": "../../node_modules/@alpinejs/persist/dist/module.esm.js",
+      "file": "@alpinejs_persist.js",
+      "fileHash": "d7cde00d",
+      "needsInterop": false
+    },
+    "alpinejs": {
+      "src": "../../node_modules/alpinejs/dist/module.esm.js",
+      "file": "alpinejs.js",
+      "fileHash": "49290af5",
+      "needsInterop": false
+    },
+    "laravel-echo": {
+      "src": "../../node_modules/laravel-echo/dist/echo.js",
+      "file": "laravel-echo.js",
+      "fileHash": "5d793f73",
+      "needsInterop": false
+    },
+    "pusher-js": {
+      "src": "../../node_modules/pusher-js/dist/web/pusher.js",
+      "file": "pusher-js.js",
+      "fileHash": "e3a5ec74",
+      "needsInterop": true
+    }
+  },
   "chunks": {}
 }
