@@ -981,7 +981,8 @@
   /* ---------- send / mic morph ---------- */
   function updateSendMic() {
     const hasText = $('#composer').innerText.trim().length > 0 || pendingAtt.length > 0;
-    $('#sendBtn').style.display = hasText ? 'grid' : 'none';
+    // Send always visible; mic hides when there's text to send
+    $('#sendBtn').style.display = 'grid';
     $('#micBtn').style.display = hasText ? 'none' : 'grid';
   }
 
@@ -1003,7 +1004,7 @@
       _mediaRecorder.ondataavailable = e => { if (e.data.size > 0) _recChunks.push(e.data); };
       _mediaRecorder.start(100);
       recSec = 0; recStart = Date.now();
-      $('#composer-tools').style.display = 'none';
+      $('#composer-field').style.display = 'none';
       $('#recBar').classList.add('show');
       $('#recTime').textContent = '0:00';
       recTimer = setInterval(() => {
@@ -1016,7 +1017,7 @@
   function stopRecording(sendIt) {
     clearInterval(recTimer); recTimer = null;
     $('#recBar').classList.remove('show');
-    $('#composer-tools').style.display = '';
+    $('#composer-field').style.display = '';
     if (!_mediaRecorder) { if (!sendIt) toast('Recording discarded'); return; }
     const secs = Math.max(1, Math.round((Date.now() - recStart) / 1000));
     _mediaRecorder.onstop = () => {
