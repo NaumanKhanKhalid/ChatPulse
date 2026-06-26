@@ -293,7 +293,8 @@
 
   /* ============ ONBOARDING (first run) ============ */
   function startOnboarding(force) {
-    if (!force && localStorage.getItem('cp-onboarded') === '1') return;
+    const obKey = 'cp-onboarded-' + me.id;
+    if (!force && localStorage.getItem(obKey) === '1') return;
     document.querySelectorAll('.cp-ob').forEach(o => o.remove());
     let step = 0, grad = me.grad.slice(), name = me.name === 'Sara Karim' ? '' : me.name, bio = '', status = 'available';
     const ov = document.createElement('div'); ov.className = 'cp-ob';
@@ -301,7 +302,7 @@
     const steps = ['welcome', 'profile', 'status', 'notifs', 'done'];
     function finish(skip) {
       if (!skip) saveProfile({ name: name.trim() || me.name, grad, status, bio: bio.trim() });
-      localStorage.setItem('cp-onboarded', '1');
+      localStorage.setItem('cp-onboarded-' + me.id, '1');
       ov.remove();
       if (!skip) toast('Welcome to ChatPulse 👋');
     }
