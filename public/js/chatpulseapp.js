@@ -1520,11 +1520,18 @@
           c.typing = Object.keys(c._typers).length > 0;
         }
         if (c.id !== activeId) c.unread = (c.unread || 0) + 1;
-        if (c.id === activeId) { renderThread(c); markConvRead(c); } else renderList($('#search').value);
+        // Only mark read if this conversation is active AND the tab is visible
+        if (c.id === activeId) {
+          renderThread(c);
+          if (!document.hidden) markConvRead(c);
+        } else {
+          renderList($('#search').value);
+        }
         renderList($('#search').value);
-        // Whisper delivered receipt back to sender
+        // Whisper delivered receipt back to sender (use numeric db id)
         if (window.Echo) {
-          window.Echo.private('conversation.' + dbId).whisper('message-delivered', { message_id: msg.id, user_id: me.id, at: nowTime() });
+          const dbMsgId = String(msg.id).replace(/^db/, '');
+          window.Echo.private('conversation.' + dbId).whisper('message-delivered', { message_id: dbMsgId, user_id: me.id, at: nowTime() });
         }
       })
       // Message edited
@@ -1577,12 +1584,14 @@
         if (c.id === activeId) renderThread(c);
       })
       .listenForWhisper('message-delivered', e => {
-        const msg = c.messages.find(m => m.id === 'db' + e.message_id || m.id === e.message_id);
+        // message_id comes as numeric string, our ids are prefixed 'db'
+        const msg = c.messages.find(m => m.id === 'db' + e.message_id || m.id === e.message_id || m.id === String(e.message_id));
         if (!msg || msg.user !== me.id) return;
-        if (msg.status === 'sent') {
+        if (msg.status === 'sent' || msg.status === 'sending') {
           msg.status = 'delivered';
           msg.deliveredAt = e.at || nowTime();
           if (c.id === activeId) renderThread(c);
+          else renderList($('#search').value);
         }
       });
   }
