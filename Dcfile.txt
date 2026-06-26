@@ -1,5 +1,4 @@
-FROM php:8.2-cli
-
+FROM php:8.2-cli-bookworm
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -11,8 +10,9 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     nodejs \
     npm \
-    && docker-php-ext-configure pcntl \
-&& docker-php-ext-install pcntl pdo pdo_mysql mbstring zip
+ && docker-php-ext-install pcntl pdo pdo_mysql mbstring zip
+
+RUN php -m | grep pcntl
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
