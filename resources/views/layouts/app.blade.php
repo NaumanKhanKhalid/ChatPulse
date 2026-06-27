@@ -13,12 +13,12 @@
     @yield('head')
 </head>
 <script>
-    console.log(@json([
-        'host' => env('VITE_REVERB_HOST'),
-        'port' => env('VITE_REVERB_PORT'),
-        'scheme' => env('VITE_REVERB_SCHEME'),
-        'key' => env('VITE_REVERB_APP_KEY'),
-    ]));
+console.log({
+    host: "{{ env('VITE_REVERB_HOST') }}",
+    port: "{{ env('VITE_REVERB_PORT') }}",
+    scheme: "{{ env('VITE_REVERB_SCHEME') }}",
+    key: "{{ env('VITE_REVERB_APP_KEY') }}"
+});
 </script>
 <body data-user-id="{{ auth()->id() }}" data-user-name="{{ auth()->user()?->name }}">
 
