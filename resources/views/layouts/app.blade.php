@@ -13,13 +13,15 @@
     @yield('head')
 </head>
 <script>
-console.log({
-    host: "{{ env('VITE_REVERB_HOST') }}",
-    port: "{{ env('VITE_REVERB_PORT') }}",
-    scheme: "{{ env('VITE_REVERB_SCHEME') }}",
-    key: "{{ env('VITE_REVERB_APP_KEY') }}"
-});
-</script>   
+window.reverbConfig = {
+    key: "{{ env('REVERB_APP_KEY') }}",
+    host: "{{ env('REVERB_HOST') }}",
+    port: "{{ env('REVERB_PORT') }}",
+    scheme: "{{ env('REVERB_SCHEME') }}"
+    console.log(window.reverbConfig);
+
+};
+</script>
 <body data-user-id="{{ auth()->id() }}" data-user-name="{{ auth()->user()?->name }}">
 
 <div id="netBanner"></div>

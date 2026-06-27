@@ -1,25 +1,24 @@
-
-console.log('ENV =', import.meta.env);
-console.log('KEY =', import.meta.env.VITE_REVERB_APP_KEY);
-console.log('HOST =', import.meta.env.VITE_REVERB_HOST);
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
 window.Pusher = Pusher;
 
-try {
-    window.Echo = new Echo({
-        broadcaster: 'reverb',
-        key: import.meta.env.VITE_REVERB_APP_KEY,
-        wsHost: import.meta.env.VITE_REVERB_HOST,
-        wsPort: Number(import.meta.env.VITE_REVERB_PORT || 443),
-        wssPort: Number(import.meta.env.VITE_REVERB_PORT || 443),
-        forceTLS: import.meta.env.VITE_REVERB_SCHEME === 'https',
-        enabledTransports: ['ws', 'wss'],
-    });
+console.log('window.reverbConfig =', window.reverbConfig);
 
-    console.log('Echo initialized', window.Echo);
+const cfg = window.reverbConfig;
 
-} catch (e) {
-    console.error('FULL ERROR:', e);
+if (!cfg || !cfg.key) {
+    throw new Error('reverbConfig missing or key missing');
 }
+
+window.Echo = new Echo({
+    broadcaster: 'reverb',
+    key: cfg.key,
+    wsHost: cfg.host,
+    wsPort: Number(cfg.port),
+    wssPort: Number(cfg.port),
+    forceTLS: cfg.scheme === 'https',
+    enabledTransports: ['ws', 'wss'],
+});
+
+console.log('Echo initialized');
