@@ -10,18 +10,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script>if(localStorage.getItem('cp-dark')!=='0')document.documentElement.classList.add('dark');</script>
-    @yield('head')
 </head>
 <script>
-window.reverbConfig = {
-    key: "{{ env('REVERB_APP_KEY') }}",
-    host: "{{ env('REVERB_HOST') }}",
-    port: "{{ env('REVERB_PORT') }}",
-    scheme: "{{ env('REVERB_SCHEME') }}"
+    window.reverbConfig = {
+        key: "{{ env('REVERB_APP_KEY') }}",
+        host: "{{ env('REVERB_HOST') }}",
+        port: "{{ env('REVERB_PORT') }}",
+        scheme: "{{ env('REVERB_SCHEME') }}"
+        
+    };
     console.log(window.reverbConfig);
-
-};
 </script>
+    @yield('head')
 <body data-user-id="{{ auth()->id() }}" data-user-name="{{ auth()->user()?->name }}">
 
 <div id="netBanner"></div>
