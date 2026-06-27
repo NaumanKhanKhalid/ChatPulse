@@ -1,3 +1,7 @@
+
+console.log('ENV =', import.meta.env);
+console.log('KEY =', import.meta.env.VITE_REVERB_APP_KEY);
+console.log('HOST =', import.meta.env.VITE_REVERB_HOST);
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
