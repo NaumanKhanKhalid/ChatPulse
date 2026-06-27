@@ -19,7 +19,7 @@ console.log({
     scheme: "{{ env('VITE_REVERB_SCHEME') }}",
     key: "{{ env('VITE_REVERB_APP_KEY') }}"
 });
-</script>
+</script>   
 <body data-user-id="{{ auth()->id() }}" data-user-name="{{ auth()->user()?->name }}">
 
 <div id="netBanner"></div>
