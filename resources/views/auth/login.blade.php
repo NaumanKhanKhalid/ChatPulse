@@ -72,8 +72,8 @@
     Continue as guest
   </a>
 
-  {{-- Quick-fill demo accounts --}}
-  <div style="margin-top:24px;border-radius:14px;border:1px dashed #e6e9e7;padding:14px 16px;">
+  <!-- {{-- Quick-fill demo accounts --}} -->
+  <!-- <div style="margin-top:24px;border-radius:14px;border:1px dashed #e6e9e7;padding:14px 16px;">
     <p style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#8a958f;margin:0 0 10px;">Quick sign-in — demo accounts</p>
     <div style="display:flex;flex-direction:column;gap:6px;">
       <button type="button" onclick="fillDemo('admin@chatpulse.app')"
@@ -114,7 +114,7 @@
       </button>
     </div>
     <p style="font-size:11.5px;color:#8a958f;margin:10px 0 0;text-align:center;">All passwords: <code style="font-size:11.5px;background:#f1f4f2;padding:1px 6px;border-radius:5px;">password</code></p>
-  </div>
+  </div> -->
 </div>
 
 @push('scripts')

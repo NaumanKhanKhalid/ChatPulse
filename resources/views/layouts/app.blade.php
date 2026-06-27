@@ -19,7 +19,7 @@
         scheme: "{{ env('REVERB_SCHEME') }}"
         
     };
-    console.log(window.reverbConfig);
+    // console.log(window.reverbConfig);
 </script>
     @yield('head')
 <body data-user-id="{{ auth()->id() }}" data-user-name="{{ auth()->user()?->name }}">
