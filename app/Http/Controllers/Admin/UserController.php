@@ -9,9 +9,18 @@ use Illuminate\View\View;
 
 class UserController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $users = User::orderByDesc('created_at')->paginate(30);
+        $q = User::query();
+        if ($s = $request->get('q')) {
+            $q->where(fn($w) => $w->where('name', 'like', "%$s%")
+                ->orWhere('email', 'like', "%$s%")
+                ->orWhere('username', 'like', "%$s%"));
+        }
+        if ($role = $request->get('role')) $q->where('role', $role);
+        if ($request->get('status') === 'online') $q->where('is_online', true);
+        if ($request->get('status') === 'banned') $q->where('is_banned', true);
+        $users = $q->orderByDesc('created_at')->paginate(20)->withQueryString();
         return view('admin.users', compact('users'));
     }
 

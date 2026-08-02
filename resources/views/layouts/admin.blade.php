@@ -5,57 +5,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Admin — {{ config('app.name') }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script>if(localStorage.getItem('cp-dark')!=='0')document.documentElement.classList.add('dark');</script>
 </head>
-<body class="bg-gray-50 min-h-screen">
-<div class="flex min-h-screen">
-    {{-- Admin sidebar --}}
-    <div class="w-60 bg-gray-900 flex flex-col">
-        <div class="p-4 border-b border-gray-700">
-            <a href="{{ route('chat.index') }}" class="flex items-center gap-2 text-white font-semibold">
-                <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                </div>
-                ChatPulse Admin
-            </a>
-        </div>
-        <nav class="flex-1 p-3 space-y-1">
-            <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white text-sm transition-colors {{ request()->routeIs('admin.dashboard') ? 'bg-gray-700 text-white' : '' }}">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+<body class="adm-body">
+@php
+    $admUser = auth()->user();
+    $admGrad = $admUser->avatarGradient();
+    $admInitials = collect(explode(' ', $admUser->name))->map(fn($w)=>strtoupper(substr($w,0,1)))->take(2)->join('');
+@endphp
+<div class="adm-app">
+    {{-- Sidebar --}}
+    <aside class="adm-side">
+        <a href="{{ route('chat.index') }}" class="adm-logo">
+            <span class="adm-logo-ic">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 9.5C5 6.46 7.46 4 10.5 4h3C16.54 4 19 6.46 19 9.5S16.54 15 13.5 15H9l-3.2 2.9c-.5.46-1.3.1-1.3-.58V9.5Z" fill="#fff"/><circle cx="9.5" cy="9.5" r="1.2" fill="#10b981"/><circle cx="13.5" cy="9.5" r="1.2" fill="#10b981"/></svg>
+            </span>
+            <span class="adm-logo-tx">ChatPulse <em>Admin</em></span>
+        </a>
+
+        <nav class="adm-nav">
+            <span class="adm-nav-lbl">Overview</span>
+            <a href="{{ route('admin.dashboard') }}" class="adm-nav-item {{ request()->routeIs('admin.dashboard') ? 'on' : '' }}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
                 Dashboard
             </a>
-            <a href="{{ route('admin.users') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white text-sm transition-colors {{ request()->routeIs('admin.users*') ? 'bg-gray-700 text-white' : '' }}">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+
+            <span class="adm-nav-lbl">Manage</span>
+            <a href="{{ route('admin.users') }}" class="adm-nav-item {{ request()->routeIs('admin.users*') ? 'on' : '' }}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M15 5.5a3.2 3.2 0 0 1 0 5M17.5 19a5.5 5.5 0 0 0-3-4.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 Users
             </a>
-            <a href="{{ route('admin.groups') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white text-sm transition-colors {{ request()->routeIs('admin.groups*') ? 'bg-gray-700 text-white' : '' }}">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <a href="{{ route('admin.messages') }}" class="adm-nav-item {{ request()->routeIs('admin.messages*') ? 'on' : '' }}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 6.5C4 5.12 5.12 4 6.5 4h11C18.88 4 20 5.12 20 6.5v7c0 1.38-1.12 2.5-2.5 2.5H10l-3.6 3a1 1 0 0 1-1.65-.77V6.5Z" stroke="currentColor" stroke-width="1.7"/></svg>
+                Messages
+            </a>
+            <a href="{{ route('admin.groups') }}" class="adm-nav-item {{ request()->routeIs('admin.groups*') ? 'on' : '' }}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="9" r="2.8" stroke="currentColor" stroke-width="1.7"/><circle cx="16" cy="9" r="2.8" stroke="currentColor" stroke-width="1.7"/><path d="M2.5 18.5a5.5 5.5 0 0 1 11 0M10.5 18.5a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 Groups
             </a>
-            <a href="{{ route('admin.security') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white text-sm transition-colors {{ request()->routeIs('admin.security*') ? 'bg-gray-700 text-white' : '' }}">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+
+            <span class="adm-nav-lbl">Safety</span>
+            <a href="{{ route('admin.security') }}" class="adm-nav-item {{ request()->routeIs('admin.security*') ? 'on' : '' }}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 3.5 5 6v5c0 4.5 3 8 7 9.5 4-1.5 7-5 7-9.5V6l-7-2.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9.5 12 2 2 3.5-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Security
             </a>
         </nav>
-        <div class="p-3 border-t border-gray-700">
-            <a href="{{ route('chat.index') }}" class="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+
+        <div class="adm-side-foot">
+            <a href="{{ route('chat.index') }}" class="adm-back">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M10 19l-7-7m0 0 7-7m-7 7h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Back to Chat
             </a>
         </div>
-    </div>
+    </aside>
 
-    {{-- Content --}}
-    <div class="flex-1 flex flex-col">
-        <header class="bg-white border-b border-gray-200 px-6 py-4">
-            <h1 class="text-lg font-semibold text-gray-900">@yield('page-title', 'Admin')</h1>
+    {{-- Main --}}
+    <div class="adm-main">
+        <header class="adm-head">
+            <h1>@yield('page-title', 'Admin')</h1>
+            <div class="adm-head-right">
+                <button class="adm-theme" onclick="document.documentElement.classList.toggle('dark');localStorage.setItem('cp-dark',document.documentElement.classList.contains('dark')?'1':'0')" title="Toggle theme">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="adm-me">
+                    <div class="avatar" style="width:32px;height:32px;background:linear-gradient(135deg,{{ $admGrad[0] }},{{ $admGrad[1] }});font-size:12px">{{ $admInitials }}</div>
+                    <span>{{ $admUser->name }}</span>
+                </div>
+            </div>
         </header>
-        <main class="flex-1 p-6 overflow-auto">
+
+        <main class="adm-content">
             @if(session('success'))
-            <div class="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">{{ session('success') }}</div>
+            <div class="adm-flash ok">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m5 13 4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                {{ session('success') }}
+            </div>
             @endif
             @if(session('error'))
-            <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{{ session('error') }}</div>
+            <div class="adm-flash err">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4.5M12 15.5h.01" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+                {{ session('error') }}
+            </div>
             @endif
             @yield('content')
         </main>
