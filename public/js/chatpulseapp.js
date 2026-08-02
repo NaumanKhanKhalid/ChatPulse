@@ -382,17 +382,17 @@
       if (finalBody === body) finalBody = body + `<div class="b-foot-out">${footInner}</div>`;
     }
 
+    // WhatsApp-style side controls: react smiley + dropdown arrow beside bubble
+    const sideBtns = (!msg.deleted && !spam) ? `<div class="msg-side"><button class="ms-btn" data-sidereact="${msg.id}" title="React">${svg('react')}</button><button class="ms-btn" data-msgmenu="${msg.id}" title="More options"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>` : '';
+
     return `
     <div class="msg ${grouped ? 'grouped' : ''} ${mine ? 'mine' : ''} ${msg.status === 'failed' ? 'failed' : ''}" data-msg="${msg.id}">
       <div class="b-av">${av}</div>
       <div class="b-body">
         ${pin}${head}
-        ${finalBody}
+        <div class="b-line"><div class="b-stack">${finalBody}</div>${sideBtns}</div>
         ${uploadFoot}
         ${reax}
-      </div>
-      <div class="msg-tools">
-        ${tool('react', 'React')}${tool('reply', 'Reply')}${tool('forward', 'Forward')}${mine ? tool('edit', 'Edit') : ''}${tool('pin', 'Pin')}${tool('more', 'More')}
       </div>
     </div>`;
   }
@@ -579,16 +579,8 @@
     $$('[data-react]').forEach(b => b.addEventListener('click', () => toggleReact(c, b.dataset.react, b.dataset.emo)));
     $$('[data-addreact]').forEach(b => b.addEventListener('click', e => openEmoji(c, b.dataset.addreact, e.currentTarget)));
     $$('[data-poll]').forEach(b => b.addEventListener('click', () => votePoll(c, b.dataset.poll, +b.dataset.opt)));
-    $$('.msg-tools [data-tool]').forEach(b => b.addEventListener('click', e => {
-      const id = e.currentTarget.closest('[data-msg]').dataset.msg, kind = e.currentTarget.dataset.tool;
-      if (kind === 'react') openEmoji(c, id, e.currentTarget);
-      else if (kind === 'reply') startReply(c, id);
-      else if (kind === 'pin') togglePin(c, id);
-      else if (kind === 'edit') startEdit(c, id);
-      else if (kind === 'forward') forwardMessage(c, id);
-      else if (kind === 'bookmark') toggleBookmark(c, id, e.currentTarget);
-      else moreMenu(c, id, e.currentTarget);
-    }));
+    $$('[data-sidereact]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openEmoji(c, b.dataset.sidereact, b); }));
+    $$('[data-msgmenu]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); msgMenu(c, b.dataset.msgmenu, b); }));
     $$('[data-voice]').forEach(v => v.querySelector('.v-play').addEventListener('click', () => toggleVoice(v)));
     $$('[data-retry]').forEach(b => b.addEventListener('click', () => retryMessage(c, b.dataset.retry)));
     $$('[data-upretry]').forEach(b => b.addEventListener('click', () => retryUpload(c, b.dataset.upretry)));
@@ -643,7 +635,17 @@
     msg.reactions = msg.reactions || {};
     const arr = msg.reactions[emo] = msg.reactions[emo] || [];
     const i = arr.indexOf(me.id);
-    if (i > -1) { arr.splice(i, 1); if (!arr.length) delete msg.reactions[emo]; } else arr.push(me.id);
+    if (i > -1) {
+      // clicking same emoji removes it
+      arr.splice(i, 1); if (!arr.length) delete msg.reactions[emo];
+    } else {
+      // one reaction per user: remove my previous reaction from any other emoji first
+      Object.keys(msg.reactions).forEach(k => {
+        const a = msg.reactions[k], j = a.indexOf(me.id);
+        if (j > -1) { a.splice(j, 1); if (!a.length) delete msg.reactions[k]; }
+      });
+      (msg.reactions[emo] = msg.reactions[emo] || []).push(me.id);
+    }
     renderThread(c);
     const url = (R.react || '/messages/{msg}/reactions').replace('{msg}', msgDbId(msgId));
     apiPost(url, { emoji: emo }).catch(() => {});
@@ -651,11 +653,15 @@
   function openEmoji(c, msgId, anchor) {
     closePops();
     const pop = document.createElement('div'); pop.className = 'emoji-pop';
-    pop.innerHTML = reactionsPool.map(e => `<button data-e="${e}">${e}</button>`).join('');
+    pop.innerHTML = reactionsPool.slice(0, 6).map(e => `<button data-e="${e}">${e}</button>`).join('') + `<button class="ep-more" data-e="__more" title="More emojis"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>`;
     document.body.appendChild(pop);
     const r = anchor.getBoundingClientRect();
-    pop.style.top = (r.top - 48) + 'px'; pop.style.left = Math.min(r.left, window.innerWidth - 260) + 'px';
-    $$('button', pop).forEach(b => b.addEventListener('click', () => { toggleReact(c, msgId, b.dataset.e); closePops(); }));
+    pop.style.top = Math.max(8, r.top - 52) + 'px'; pop.style.left = Math.min(r.left - 100, window.innerWidth - 330) + 'px';
+    $$('button', pop).forEach(b => b.addEventListener('click', e => {
+      e.stopPropagation();
+      if (b.dataset.e === '__more') { closePops(); openEmojiPanel(anchor, emo => { toggleReact(c, msgId, emo); $$('.emoji-panel').forEach(p => p.remove()); }); }
+      else { toggleReact(c, msgId, b.dataset.e); closePops(); }
+    }));
     setTimeout(() => document.addEventListener('click', closePops, { once: true }), 0);
   }
   function closePops() { $$('.emoji-pop, .pop-menu').forEach(p => p.remove()); }
@@ -1148,21 +1154,29 @@
       { ic: 'clock', label: 'Schedule message', fn: () => toast('Schedule picker') },
     ]);
   }
-  function moreMenu(c, msgId, anchor) {
-    const msg = c.messages.find(m => m.id === msgId); const mine = msg.user === me.id;
+  function msgMenu(c, msgId, anchor) {
+    const msg = c.messages.find(m => m.id === msgId); if (!msg) return;
+    const mine = msg.user === me.id;
     const items = [
+      { ic: 'reply', label: 'Reply', fn: () => startReply(c, msgId) },
       { ic: 'forward', label: 'Forward', fn: () => forwardMessage(c, msgId) },
       { ic: 'copy', label: 'Copy text', fn: () => { navigator.clipboard?.writeText(msg.text || ''); toast('Copied to clipboard'); } },
+      { ic: msg.pinned ? 'unpin' : 'pin', label: msg.pinned ? 'Unpin' : 'Pin', fn: () => togglePin(c, msgId) },
+      { ic: 'bookmark', label: msg.bookmarked ? 'Unsave' : 'Save message', fn: () => toggleBookmark(c, msgId) },
     ];
-    if (mine) items.push({ sep: true }, { ic: 'trash', label: 'Delete message', danger: true, fn: () => {
-      msg.deleted = true; msg.text = 'This message was deleted'; delete msg.poll; delete msg.voice; delete msg.link;
-      renderThread(c); toast('Message deleted');
-      if (msgId.startsWith('db')) {
-        const url = (R.deleteMessage || '/messages/{msg}').replace('{msg}', msgDbId(msgId));
-        apiDelete(url).catch(() => {});
-      }
-    } });
-    else items.push({ sep: true }, { ic: 'flag', label: 'Report message', danger: true, fn: () => reportMessage(c, msg) });
+    if (mine) {
+      items.push({ ic: 'edit', label: 'Edit', fn: () => startEdit(c, msgId) });
+      items.push({ sep: true }, { ic: 'trash', label: 'Delete message', danger: true, fn: () => {
+        msg.deleted = true; msg.text = 'This message was deleted'; delete msg.poll; delete msg.voice; delete msg.link;
+        renderThread(c); toast('Message deleted');
+        if (msgId.startsWith('db')) {
+          const url = (R.deleteMessage || '/messages/{msg}').replace('{msg}', msgDbId(msgId));
+          apiDelete(url).catch(() => {});
+        }
+      } });
+    } else {
+      items.push({ sep: true }, { ic: 'flag', label: 'Report message', danger: true, fn: () => reportMessage(c, msg) });
+    }
     popMenu(anchor, items);
   }
   function reportMessage(c, msg) {
@@ -1304,28 +1318,65 @@
     startUpload(c, m);
   }
 
-  /* ---------- emoji picker (composer) ---------- */
-  const EMOJI = {
-    '😀': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😋','😜','🤪','😝','🤗','🤔','🤨','😐','😶','🙄','😏','😬','😴','🤤','😪','😵','🥳','🥺','😎','🤓','🧐','🙁','😤','😢','😭','😱','😡'],
-    '👍': ['👍','👎','👌','🤌','✌️','🤞','🤟','🤘','👏','🙌','🙏','💪','👋','🤙','✊','👊','🫶','🤝','💅','👀','🫡','🤷','🤦','💯','🔥','✨','⭐','🎉','🎊','❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💖','💕'],
-    '🐶': ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦆','🦉','🦄','🐝','🦋','🐢','🐠','🐬','🌸','🌼','🌻','🌹','🌳','🌴','🌵','🍀','🌙','⛅','🌧️','❄️','🌈','🔥'],
-    '🍎': ['🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🥑','🥦','🌽','🥕','🍞','🧀','🍗','🍔','🍟','🍕','🌭','🌮','🍣','🍜','🍦','🍰','🎂','🍫','🍬','☕','🍵','🍺','🍷','🥂'],
-    '⚽': ['⚽','🏀','🏈','⚾','🎾','🏐','🏉','🎱','🏓','🏸','🥅','⛳','🎯','🎮','🎲','🎸','🎺','🎻','🥁','🎨','✈️','🚗','🚀','🏆','🥇','📱','💻','⌚','📷','🎧','💡','🔑','🎁','📌','📎','✏️','📚','💰','💎','🔔'],
-  };
-  function openComposerEmoji(anchor) {
+  /* ---------- emoji picker (WhatsApp-style: categories + search) ---------- */
+  const EMOJI_CATS = [
+    { key: 'smileys', label: 'Smileys & People', ic: '😀', kw: 'smile happy face laugh cry sad angry love people hand',
+      list: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','💩','🤡','👻','👽','🤖','👋','🤚','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','💪','🦾','🖕','✍️','💅','🤳'] },
+    { key: 'hearts', label: 'Hearts & Symbols', ic: '❤️', kw: 'heart love like star fire sparkle check symbol',
+      list: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','♥️','🔥','✨','⭐','🌟','💫','⚡','💥','💯','✅','❌','❓','❗','💤','💢','💦','💨','🕳️','💬','🗨️','💭','🎉','🎊','🎈','🎁','🏆','🥇','🥈','🥉','🎖️','🏅','📣','🔔','🎵','🎶','♻️','🔱','⚜️','🔰','✔️','☑️','➕','➖','➗','✖️','♾️','‼️','⁉️','🚫','💲','🔞'] },
+    { key: 'animals', label: 'Animals & Nature', ic: '🐶', kw: 'animal dog cat nature tree flower plant weather',
+      list: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐽','🐸','🐵','🙈','🙉','🙊','🐒','🐔','🐧','🐦','🐤','🐣','🐥','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🪰','🐢','🐍','🦎','🦂','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🐘','🦛','🐪','🦒','🦘','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐓','🦃','🦚','🦜','🦢','🕊️','🐇','🦝','🦨','🦡','🦫','🦦','🐁','🐀','🌵','🎄','🌲','🌳','🌴','🪵','🌱','🌿','☘️','🍀','🎍','🪴','🎋','🍃','🍂','🍁','🌾','🌺','🌻','🌹','🥀','🌷','🌼','🌸','💐','🍄','🌰','🌙','🌛','⭐','🌍','🪐','💫','☀️','🌤️','⛅','🌥️','☁️','🌦️','🌧️','⛈️','🌩️','❄️','☃️','⛄','🌬️','💨','🌪️','🌫️','🌈','☔','💧','🌊'] },
+    { key: 'food', label: 'Food & Drink', ic: '🍕', kw: 'food eat drink fruit pizza coffee tea cake',
+      list: ['🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🫑','🌽','🥕','🫒','🧄','🧅','🥔','🍠','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🦴','🌭','🍔','🍟','🍕','🫓','🥪','🥙','🧆','🌮','🌯','🫔','🥗','🥘','🫕','🥫','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥠','🥮','🍢','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','☕','🍵','🫖','🥤','🧋','🧃','🧉','🥛','🍼','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧊'] },
+    { key: 'activity', label: 'Activity & Travel', ic: '⚽', kw: 'sport game travel car plane music activity',
+      list: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🏹','🎣','🤿','🥊','🥋','🎽','🛹','🛼','🛷','⛸️','🥌','🎿','⛷️','🏂','🪂','🏋️','🤼','🤸','⛹️','🤺','🤾','🏌️','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚵','🚴','🏆','🎪','🤹','🎭','🩰','🎨','🎬','🎤','🎧','🎼','🎹','🥁','🪘','🎷','🎺','🪗','🎸','🪕','🎻','🎲','♟️','🎯','🎳','🎮','🎰','🧩','🚗','🚕','🚙','🚌','🚎','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🛵','🏍️','🛺','🚲','🛴','🚨','🚔','🚍','🚘','🚖','✈️','🛫','🛬','🛩️','🚀','🛸','🚁','🛶','⛵','🚤','🛥️','🛳️','⛴️','🚢','⚓','🚧','⛽','🚏','🗺️','🗿','🗽','🗼','🏰','🏯','🏟️','🎡','🎢','🎠','⛲','⛱️','🏖️','🏝️','🏜️','🌋','⛰️','🏔️','🗻','🏕️','⛺','🛖','🏠','🏡','🏘️','🏚️','🏗️','🏭','🏢','🏬','🏣','🏤','🏥','🏦','🏨','🏪','🏫','🏩','💒','🏛️','⛪','🕌','🕍','🛕','🕋'] },
+    { key: 'objects', label: 'Objects', ic: '💡', kw: 'object phone computer tool money book gift',
+      list: ['⌚','📱','📲','💻','⌨️','🖥️','🖨️','🖱️','🖲️','🕹️','🗜️','💽','💾','💿','📀','📼','📷','📸','📹','🎥','📽️','🎞️','📞','☎️','📟','📠','📺','📻','🎙️','🎚️','🎛️','🧭','⏱️','⏲️','⏰','🕰️','⌛','⏳','📡','🔋','🪫','🔌','💡','🔦','🕯️','🪔','🧯','🛢️','💸','💵','💴','💶','💷','🪙','💰','💳','💎','⚖️','🪜','🧰','🪛','🔧','🔨','⚒️','🛠️','⛏️','🪚','🔩','⚙️','🪤','🧱','⛓️','🧲','🔫','💣','🧨','🪓','🔪','🗡️','⚔️','🛡️','🚬','⚰️','🪦','⚱️','🏺','🔮','📿','🧿','💈','⚗️','🔭','🔬','🕳️','🩹','🩺','💊','💉','🩸','🧬','🦠','🧫','🧪','🌡️','🧹','🪠','🧺','🧻','🚽','🚰','🚿','🛁','🛀','🧼','🪥','🪒','🧽','🪣','🧴','🛎️','🔑','🗝️','🚪','🪑','🛋️','🛏️','🛌','🧸','🪆','🖼️','🪞','🪟','🛍️','🛒','🎁','🎈','🎏','🎀','🪄','🪅','🎊','🎉','🎎','🏮','🎐','🧧','✉️','📩','📨','📧','💌','📥','📤','📦','🏷️','🪧','📪','📫','📬','📭','📮','📯','📜','📃','📄','📑','🧾','📊','📈','📉','🗒️','🗓️','📆','📅','🗑️','📇','🗃️','🗳️','🗄️','📋','📁','📂','🗂️','🗞️','📰','📓','📔','📒','📕','📗','📘','📙','📚','📖','🔖','🧷','🔗','📎','🖇️','📐','📏','🧮','📌','📍','✂️','🖊️','🖋️','✒️','🖌️','🖍️','📝','✏️','🔍','🔎','🔏','🔐','🔒','🔓'] },
+  ];
+  function openEmojiPanel(anchor, onPick) {
     closePops();
     const panel = document.createElement('div'); panel.className = 'emoji-panel';
-    const cats = Object.keys(EMOJI);
-    panel.innerHTML = `<div class="emoji-cats">${cats.map((c, i) => `<button class="emoji-cat ${i === 0 ? 'on' : ''}" data-cat="${c}">${c}</button>`).join('')}</div><div class="emoji-grid"></div>`;
+    panel.innerHTML = `
+      <div class="emoji-search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input type="text" placeholder="Search emoji" id="emojiSearchInp"></div>
+      <div class="emoji-cats">${EMOJI_CATS.map((c, i) => `<button class="emoji-cat ${i === 0 ? 'on' : ''}" data-cat="${c.key}" title="${c.label}">${c.ic}</button>`).join('')}</div>
+      <div class="emoji-cat-label" id="emojiCatLabel">${EMOJI_CATS[0].label}</div>
+      <div class="emoji-grid"></div>`;
     document.body.appendChild(panel);
     const grid = $('.emoji-grid', panel);
-    const fill = cat => { grid.innerHTML = EMOJI[cat].map(e => `<button>${e}</button>`).join(''); $$('button', grid).forEach(b => b.addEventListener('click', () => insertEmoji(b.textContent))); };
-    fill(cats[0]);
-    $$('.emoji-cat', panel).forEach(b => b.addEventListener('click', () => { $$('.emoji-cat', panel).forEach(x => x.classList.remove('on')); b.classList.add('on'); fill(b.dataset.cat); }));
+    const label = $('#emojiCatLabel', panel);
+    const bindGrid = () => $$('button', grid).forEach(b => b.addEventListener('click', e => { e.stopPropagation(); onPick(b.textContent); }));
+    const fill = key => {
+      const cat = EMOJI_CATS.find(x => x.key === key);
+      label.textContent = cat.label;
+      grid.innerHTML = cat.list.map(e => `<button>${e}</button>`).join('');
+      bindGrid();
+    };
+    fill(EMOJI_CATS[0].key);
+    $$('.emoji-cat', panel).forEach(b => b.addEventListener('click', e => {
+      e.stopPropagation();
+      $$('.emoji-cat', panel).forEach(x => x.classList.remove('on')); b.classList.add('on');
+      $('#emojiSearchInp', panel).value = '';
+      fill(b.dataset.cat);
+    }));
+    // Search across all categories
+    $('#emojiSearchInp', panel).addEventListener('input', e => {
+      const q = e.target.value.trim().toLowerCase();
+      if (!q) { fill($('.emoji-cat.on', panel)?.dataset.cat || EMOJI_CATS[0].key); return; }
+      const hits = EMOJI_CATS.filter(cat => cat.kw.includes(q) || cat.label.toLowerCase().includes(q));
+      const list = hits.length ? hits.flatMap(cat => cat.list) : EMOJI_CATS.flatMap(cat => cat.list);
+      label.textContent = `Results for “${q}”`;
+      grid.innerHTML = (hits.length ? list : list.slice(0, 120)).map(x => `<button>${x}</button>`).join('');
+      bindGrid();
+    });
     const r = anchor.getBoundingClientRect();
-    panel.style.left = Math.min(r.left - 270, window.innerWidth - 324) + 'px';
-    panel.style.top = Math.max(12, r.top - 268) + 'px';
+    panel.style.left = Math.max(10, Math.min(r.left - 180, window.innerWidth - 390)) + 'px';
+    panel.style.top = Math.max(10, r.top - 420) + 'px';
+    setTimeout(() => $('#emojiSearchInp', panel)?.focus(), 50);
     setTimeout(() => document.addEventListener('click', function h(e) { if (!panel.contains(e.target) && e.target !== anchor && !anchor.contains(e.target)) { panel.remove(); document.removeEventListener('click', h); } }), 0);
+    return panel;
+  }
+  function openComposerEmoji(anchor) {
+    openEmojiPanel(anchor, emo => insertEmoji(emo));
   }
   function insertEmoji(emo) {
     const comp = $('#composer'); comp.focus();
