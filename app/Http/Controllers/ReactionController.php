@@ -23,6 +23,11 @@ class ReactionController extends Controller
             $existing->delete();
             $action = 'removed';
         } else {
+            // One reaction per user per message (WhatsApp behavior):
+            // replace any previous reaction with the new emoji
+            MessageReaction::where('message_id', $message->id)
+                ->where('user_id', $user->id)
+                ->delete();
             MessageReaction::create(['message_id'=>$message->id,'user_id'=>$user->id,'emoji'=>$request->emoji]);
             $action = 'added';
         }
