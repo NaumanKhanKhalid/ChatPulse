@@ -8,9 +8,11 @@ use Illuminate\View\View;
 
 class GroupController extends Controller
 {
-    public function index(): View
+    public function index(\Illuminate\Http\Request $request): View
     {
-        $groups = Conversation::where('type','group')->withCount('participants')->orderByDesc('created_at')->paginate(30);
+        $q = Conversation::where('type','group')->withCount(['participants','messages']);
+        if ($s = $request->get('q')) $q->where('name', 'like', "%$s%");
+        $groups = $q->orderByDesc('created_at')->paginate(20)->withQueryString();
         return view('admin.groups', compact('groups'));
     }
 
