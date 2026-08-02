@@ -759,7 +759,8 @@ html.dark .sset-nav-btn.active { background:rgba(16,185,129,.14); color:#6ee7b7;
 .sset-logout:hover { background:rgba(239,68,68,.08) !important; }
 
 /* Main — fills #chat panel */
-.sset-main { flex:1; overflow-y:auto; padding:32px 40px; max-width:680px; }
+.sset-main { flex:1; overflow-y:auto; padding:32px 48px; }
+.sset-sec { max-width:860px; margin:0 auto; }
 .sset-sec-header { margin-bottom:22px; }
 .sset-sec-header h2 { font-size:19px; font-weight:800; color:var(--text); margin-bottom:3px; }
 .sset-sec-header p { font-size:13.5px; color:var(--text3); }

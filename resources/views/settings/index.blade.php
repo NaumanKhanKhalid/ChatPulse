@@ -51,6 +51,7 @@
 @endsection
 
 @section('content')
+<style>#rightPanel{display:none}</style>
 <div class="sset-main">
 
     {{-- PROFILE --}}
