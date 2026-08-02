@@ -18,7 +18,8 @@
     <button class="filter on">All</button>
     <button class="filter">Unread</button>
     <button class="filter">Groups</button>
-    <button class="filter">Scheduled</button>
+    {{-- Scheduled feature disabled for now --}}
+    {{-- <button class="filter">Scheduled</button> --}}
 </div>
 <div id="convoList"></div>
 @endsection
@@ -49,10 +50,10 @@
             </button>
             {{-- Text input --}}
             <div id="composer" contenteditable="true" data-placeholder="Message…"></div>
-            {{-- Right side of input: schedule + mic --}}
-            <button class="ct" data-ct="schedule" title="Schedule message">
+            {{-- Scheduled feature disabled for now --}}
+            {{-- <button class="ct" data-ct="schedule" title="Schedule message">
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.3" stroke="currentColor" stroke-width="1.7"/><path d="M12 8v4.5l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-            </button>
+            </button> --}}
             <button id="micBtn" title="Record voice message" class="ct">
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21M8.5 21h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             </button>

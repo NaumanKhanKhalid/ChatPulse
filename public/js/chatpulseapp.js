@@ -1151,7 +1151,8 @@
           }).catch(() => {});
       }) },
       { ic: 'file', label: 'Upload file', fn: () => $('#fileInput').click() },
-      { ic: 'clock', label: 'Schedule message', fn: () => toast('Schedule picker') },
+      // Scheduled feature disabled for now
+      // { ic: 'clock', label: 'Schedule message', fn: () => toast('Schedule picker') },
     ]);
   }
   function msgMenu(c, msgId, anchor) {
