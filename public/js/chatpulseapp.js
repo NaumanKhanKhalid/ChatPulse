@@ -314,6 +314,19 @@
       ${right}
     </div>`;
   }
+  function imageAlbum(msg) {
+    const imgs = msg.images || [];
+    const shown = imgs.slice(0, 4);
+    const extra = imgs.length - 4;
+    const busy = msg.uploading || msg.uploadFailed;
+    let overlay = '';
+    if (msg.uploading) overlay = `<div class="up-overlay"><div class="up-bar wide"><span class="up-bar-fill" style="width:${msg.progress || 0}%"></span></div><span class="up-pct light">${Math.round(msg.progress || 0)}%</span></div>`;
+    else if (msg.uploadFailed) overlay = `<button class="up-overlay failed" data-upretry="${msg.id}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 1 2.3 5.6M4 17v-4h4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Upload failed · Retry</span></button>`;
+    return `<div class="img-album ${shown.length === 3 ? 'three' : ''} ${busy ? 'uploading' : ''}">
+      ${shown.map((im, i) => `<a class="alb-it" ${busy ? '' : `data-lightbox="${im.src}"`}><img src="${im.src}" alt="${esc(im.name || 'photo')}">${(i === 3 && extra > 0) ? `<span class="alb-more">+${extra}</span>` : ''}</a>`).join('')}
+      ${overlay}
+    </div>`;
+  }
   function imageMsg(msg) {
     const busy = msg.uploading || msg.uploadFailed;
     let overlay = '';
@@ -361,7 +374,8 @@
     }
     if (msg.deleted) body += `<div class="b-text deleted"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><path d="M9 9l6 6m0-6-6 6" stroke="currentColor" stroke-width="1.6"/></svg>This message was deleted</div>`;
     else if (msg.text) body += `<div class="b-text">${linkify(msg.text)}${msg.reported ? '<span class="reported-tag">reported</span>' : ''}${msg.edited ? '<span class="edited-tag">edited</span>' : ''}</div>`;
-    if (msg.image) body += imageMsg(msg);
+    if (msg.images) body += imageAlbum(msg);
+    else if (msg.image) body += imageMsg(msg);
     if (msg.file) body += fileMsg(msg);
     if (msg.voice) body += voice(msg, mine);
     if (msg.poll) body += poll(msg);
@@ -521,10 +535,10 @@
         ${u.guest ? `<div class="pp-row"><span class="pp-row-l">Account</span><span class="pp-row-v"><span class="g-badge">guest</span></span></div>` : ''}`);
     }
 
-    // Shared photos grid (from image messages)
-    const photos = c.messages.filter(x => x.image && !x.deleted).slice(-6).reverse();
+    // Shared photos grid (single images + album images)
+    const photos = c.messages.filter(x => !x.deleted).flatMap(x => x.images ? x.images : (x.image ? [x.image] : [])).slice(-6).reverse();
     if (photos.length) {
-      html += section('Shared photos', '', `<div class="pp-photos">${photos.map(p => `<a class="pp-ph" data-lightbox="${p.image.src}"><img src="${p.image.src}" alt=""></a>`).join('')}</div>`);
+      html += section('Shared photos', '', `<div class="pp-photos">${photos.map(p => `<a class="pp-ph" data-lightbox="${p.src}"><img src="${p.src}" alt=""></a>`).join('')}</div>`);
     }
 
     if (pinned.length) html += section('Pinned', `<svg width=14 height=14 viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/></svg>`, pinned.map(p => `<button class="pin-item" data-jump="${p.id}"><span class="pin-au">${users[p.user].name.split(' ')[0]}</span><span class="pin-tx">${esc((p.text || '').slice(0, 48))}</span></button>`).join(''));
@@ -1310,12 +1324,25 @@
     updateSendMic();
   }
   function flushAttachments(c) {
-    pendingAtt.forEach(a => {
-      const m = { id: 'a' + Date.now() + Math.random().toString(36).slice(2, 5), user: me.id, t: nowTime(), uploading: true, progress: 0, status: 'sending', _file: a._file };
-      if (a.isImg) { m.image = { src: a.src, name: a.name }; c.last = 'You: 📷 Photo'; }
-      else { m.file = { name: a.name, size: a.size }; c.last = 'You: 📎 ' + a.name; }
-      c.messages.push(m);
-      startUpload(c, m);
+    const mkId = () => 'a' + Date.now() + Math.random().toString(36).slice(2, 5);
+    const imgs = pendingAtt.filter(a => a.isImg);
+    const files = pendingAtt.filter(a => !a.isImg);
+    // Multiple images → ONE album message (WhatsApp style grid)
+    if (imgs.length > 1) {
+      const m = { id: mkId(), user: me.id, t: nowTime(), uploading: true, progress: 0, status: 'sending',
+                  _files: imgs.map(a => a._file), images: imgs.map(a => ({ src: a.src, name: a.name })) };
+      c.last = `You: 📷 ${imgs.length} photos`;
+      c.messages.push(m); startUpload(c, m);
+    } else if (imgs.length === 1) {
+      const a = imgs[0];
+      const m = { id: mkId(), user: me.id, t: nowTime(), uploading: true, progress: 0, status: 'sending', _file: a._file, image: { src: a.src, name: a.name } };
+      c.last = 'You: 📷 Photo';
+      c.messages.push(m); startUpload(c, m);
+    }
+    files.forEach(a => {
+      const m = { id: mkId(), user: me.id, t: nowTime(), uploading: true, progress: 0, status: 'sending', _file: a._file, file: { name: a.name, size: a.size } };
+      c.last = 'You: 📎 ' + a.name;
+      c.messages.push(m); startUpload(c, m);
     });
     pendingAtt = []; renderAttachTray();
   }
@@ -1326,7 +1353,8 @@
     const convDbId = c.id.replace(/^c/, '');
     const url = (R.sendMessage || '/conversations/{conv}/messages').replace('{conv}', convDbId);
     const fd = new FormData();
-    if (m._file) fd.append('attachments[]', m._file, m._file.name);
+    if (m._files) m._files.forEach(f => fd.append('attachments[]', f, f.name));
+    else if (m._file) fd.append('attachments[]', m._file, m._file.name);
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url);
     xhr.setRequestHeader('X-CSRF-TOKEN', R.csrf || '');
@@ -1607,9 +1635,11 @@
         if (msg.forwarded_from_id) cp.forwarded = true;
         if (msg.type === 'voice') { cp.voice = '0:30'; delete cp.text; }
         if (msg.attachments && msg.attachments.length) {
-          const att = msg.attachments[0];
-          if (att.file_type && att.file_type.startsWith('image/')) cp.image = { src: att.url, name: att.original_name };
-          else cp.file = { name: att.original_name, size: att.formatted_size || '?' };
+          const imgAtts = msg.attachments.filter(a => a.file_type && a.file_type.startsWith('image/'));
+          const fileAtts = msg.attachments.filter(a => !(a.file_type && a.file_type.startsWith('image/')));
+          if (imgAtts.length > 1) cp.images = imgAtts.map(a => ({ src: a.url, name: a.original_name }));
+          else if (imgAtts.length === 1) cp.image = { src: imgAtts[0].url, name: imgAtts[0].original_name };
+          if (fileAtts.length) cp.file = { name: fileAtts[0].original_name, size: fileAtts[0].formatted_size || '?' };
         }
         c.messages.push(cp);
         const u = users[msg.user_id];
