@@ -981,7 +981,13 @@
       const dot = $('.rail-ava .pres');
       if (dot) dot.style.background = statusColors[st];
       menu.querySelectorAll('[data-st]').forEach(x => x.classList.toggle('active', x.dataset.st === st));
-      apiPost(R.heartbeat || '/presence/heartbeat', { status: st }).catch(() => {});
+      if (users[me.id]) users[me.id].status = st;
+      // Persist to DB (PATCH) — broadcasts UserStatusUpdated to everyone
+      fetch(R.statusUpdate || '/profile/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json' },
+        body: JSON.stringify({ status_type: st }),
+      }).catch(() => {});
     }));
 
     menu.querySelector('#umEditProfile')?.addEventListener('click', () => { closePops(); CPAccount?.openEditProfile(); });
@@ -1643,6 +1649,20 @@
         if (!u) return;
         u.online = e.is_online;
         if (!e.is_online) u.last = 'just now';
+        renderList($('#search').value);
+        refreshActiveViews(e.user_id);
+      })
+      // Available / Busy / Away changes — update dots and labels live
+      .listen('UserStatusUpdated', e => {
+        const u = users[e.user_id];
+        if (!u) return;
+        u.status = e.status_type || 'available';
+        u.statusMsg = e.status_message || '';
+        if (e.user_id === me.id) {
+          me.status = u.status;
+          const dot = $('.rail-ava .pres');
+          if (dot) dot.style.background = statusColor[u.status] || '#10b981';
+        }
         renderList($('#search').value);
         refreshActiveViews(e.user_id);
       })

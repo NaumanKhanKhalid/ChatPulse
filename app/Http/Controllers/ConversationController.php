@@ -75,6 +75,7 @@ class ConversationController extends Controller
             'createGroup'  => route('groups.store'),
             'chat'         => route('chat.index'),
             'heartbeat'    => route('presence.heartbeat'),
+            'statusUpdate' => route('status.update'),
             'pollVote'     => url('/polls/{poll}/vote'),
             'pollStore'    => url('/conversations/{conv}/polls'),
             'scheduleMsg'  => url('/conversations/{conv}/messages'),
