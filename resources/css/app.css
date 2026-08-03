@@ -172,7 +172,7 @@ html.dark .msg:hover { background: rgba(255,255,255,.03); }
 /* Grouped: hide avatar space on last-in-group */
 .msg.grouped .b-av { visibility: hidden; }
 /* Extra bottom room in the bubble when a reaction overlaps it */
-.msg.has-reax .b-text { padding-bottom: 14px; }
+.msg.has-reax .b-text { padding-bottom: 16px; }
 .msg.has-reax .file-msg { padding-bottom: 16px; }
 .msg.has-reax .img-msg, .msg.has-reax .img-album { margin-bottom: 4px; }
 
@@ -185,10 +185,10 @@ html.dark .reply-quote { background: rgba(255,255,255,.06); }
 .reply-text { font-size: 12.5px; color: var(--text2); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; line-height: 1.4; }
 
 /* Reactions overlap the bubble edge (WhatsApp style) — no extra row height */
-.reax { display: flex; gap: 3px; flex-wrap: wrap; margin-top: -11px; margin-bottom: 2px; position: relative; z-index: 2; padding-left: 10px; }
-.msg.mine .reax { padding-left: 0; padding-right: 10px; }
-.reax-pill { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; line-height: 1; padding: 3px 7px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 1px 4px rgba(0,0,0,.14); cursor: pointer; }
-.reax-pill span { font-size: 10.5px; font-weight: 700; color: var(--text2); }
+.reax { display: flex; gap: 3px; flex-wrap: wrap; margin-top: -13px; margin-bottom: 3px; position: relative; z-index: 2; padding-left: 8px; }
+.msg.mine .reax { padding-left: 0; padding-right: 8px; }
+.reax-pill { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; line-height: 1; padding: 2.5px 6px; border-radius: 99px; background: var(--card); border: 1.5px solid var(--bg); box-shadow: 0 1px 3px rgba(0,0,0,.2); cursor: pointer; }
+.reax-pill span { font-size: 10px; font-weight: 700; color: var(--text2); }
 .reax-pill.mine { background: var(--primary-light); border-color: var(--primary); }
 html.dark .reax-pill.mine { background: rgba(16,185,129,.22); }
 
