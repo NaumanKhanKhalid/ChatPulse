@@ -53,7 +53,7 @@ class CallController extends Controller
             ->pluck('user_id');
 
         foreach ($otherParticipants as $userId) {
-            broadcast(new CallInitiated($call, $userId));
+            try { broadcast(new CallInitiated($call, $userId)); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         }
 
         return response()->json(['call_id' => $call->id]);
@@ -66,14 +66,14 @@ class CallController extends Controller
             ['call_id'=>$call->id,'user_id'=>auth()->id()],
             ['joined_at'=>now()]
         );
-        broadcast(new CallAnswered($call));
+        try { broadcast(new CallAnswered($call)); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         return response()->json(['success' => true]);
     }
 
     public function decline(Call $call): JsonResponse
     {
         $call->update(['status' => 'declined']);
-        broadcast(new CallEnded($call));
+        try { broadcast(new CallEnded($call)); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         return response()->json(['success' => true]);
     }
 
@@ -87,14 +87,14 @@ class CallController extends Controller
             ->whereNull('left_at')
             ->update(['left_at' => now()]);
 
-        broadcast(new CallEnded($call));
+        try { broadcast(new CallEnded($call)); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         return response()->json(['success' => true]);
     }
 
     public function signal(Request $request, Call $call): JsonResponse
     {
         $request->validate(['signal' => ['required','array']]);
-        broadcast(new WebRTCSignal($call->id, $request->signal, auth()->id()))->toOthers();
+        try { broadcast(new WebRTCSignal($call->id, $request->signal, auth()->id()))->toOthers(); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         return response()->json(['success' => true]);
     }
 }

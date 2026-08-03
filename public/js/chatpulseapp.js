@@ -48,7 +48,9 @@
       const active = c.id === activeId;
       const unread = c.unread > 0;
       const dot = (c.type === 'direct' && m.online) ? `<span class="pres" style="background:${statusColor[m.status] || '#10b981'}"></span>` : '';
-      const badge = unread ? `<span class="badge">${c.unread}</span>` : (c.read ? `<svg class="ticks read" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m3 13 3.2 3.2L13 9.5M11 13l3 3 7-7.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>` : '');
+      // Ticks only when the LAST message is mine (like WhatsApp)
+      const lastMine = (c.last || '').startsWith('You:');
+      const badge = unread ? `<span class="badge">${c.unread}</span>` : ((c.read && lastMine) ? `<svg class="ticks read" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m3 13 3.2 3.2L13 9.5M11 13l3 3 7-7.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>` : '');
       const typing = c.typing ? `<span class="typing-mini"><span class="d"></span><span class="d"></span><span class="d"></span></span>` : esc(c.last || '');
       const muted = c.muted ? `<svg class="muted-ico" width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 4V5L8 9H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m17 9 4 6m0-6-4 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>` : '';
       const flags = `<span class="convo-flags">${c.fav ? '<svg class="fav-star" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l2.4 5 5.4.6-4 3.7 1.1 5.3L12 16.9 7.1 18.6l1.1-5.3-4-3.7 5.4-.6L12 4Z"/></svg>' : ''}${c.pinned ? '<svg class="pin-mark" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/></svg>' : ''}</span>`;
@@ -507,10 +509,17 @@
 
     if (m.group) html += section('Members · ' + c.members.length, '', c.members.map(id => { const u = users[id]; return `<div class="mem" data-uid="${id}" style="cursor:pointer"><span class="avwrap">${avatar(u, 32)}${u.online ? `<span class="pres sm" style="background:${statusColor[u.status]}"></span>` : ''}</span><div class="mem-info"><span class="mem-name">${esc(u.name)}${id === c.members[0] ? '<span class="role">admin</span>' : ''}</span><span class="mem-sub">${u.online ? 'online' : 'offline'}</span></div></div>`; }).join(''));
 
-    html += section('Shared files', '', `
-      ${fileItem('brand-palette.fig', '2.4 MB', '#7c3aed')}
-      ${fileItem('onboarding-v3.pdf', '1.1 MB', '#ef4444')}
-      ${fileItem('crit-notes.md', '12 KB', '#10b981')}`);
+    // Real shared files — derived from messages with attachments
+    const sharedFiles = c.messages.filter(m => (m.file || m.image) && !m.deleted).slice(-6).reverse();
+    if (sharedFiles.length) {
+      const colors = { pdf: '#ef4444', doc: '#3b82f6', docx: '#3b82f6', zip: '#f59e0b', fig: '#7c3aed', md: '#10b981', png: '#06b6d4', jpg: '#06b6d4', jpeg: '#06b6d4' };
+      html += section('Shared files', '', sharedFiles.map(m => {
+        const name = m.file ? m.file.name : (m.image.name || 'image');
+        const size = m.file ? m.file.size : '';
+        const ext = (name.split('.').pop() || '').toLowerCase();
+        return fileItem(name, size, colors[ext] || '#8a958f');
+      }).join(''));
+    }
 
     $('#rightPanel .panel-scroll').innerHTML = html;
     $$('[data-jump]').forEach(b => b.addEventListener('click', () => jumpTo(b.dataset.jump)));
@@ -839,7 +848,7 @@
       // server may have found existing or created new
       const existNow = conversations.find(c => c.id === data.id);
       if (existNow) { selectConvo(existNow.id); return; }
-      const newConv = { id: data.id, type: 'direct', with: uid, unread: 0, time: 'now', last: '', read: true, messages: [], pinnedIds: [] };
+      const newConv = { id: data.id, type: 'direct', with: uid, unread: 0, time: '', last: '', messages: [], pinnedIds: [] };
       conversations.unshift(newConv);
       subscribeConv(newConv);
       selectConvo(data.id);

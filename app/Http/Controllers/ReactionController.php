@@ -33,7 +33,7 @@ class ReactionController extends Controller
         }
 
         $message->load('reactions.user');
-        broadcast(new ReactionToggled($message))->toOthers();
+        try { broadcast(new ReactionToggled($message))->toOthers(); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         return response()->json(['action'=>$action,'reactions'=>$message->getGroupedReactions()]);
     }
 }
