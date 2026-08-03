@@ -18,8 +18,16 @@ class NotificationService
         ]);
     }
 
+    /**
+     * Notifications are only created for things the conversation list cannot
+     * already show: @mentions. Plain new messages are intentionally skipped —
+     * the unread badge on the conversation already covers those.
+     */
     public function notifyNewMessage(Message $message): void
     {
+        $body = $message->body ?? '';
+        if ($body === '' || !str_contains($body, '@')) return;
+
         $conversation = $message->conversation;
         $sender = $message->user;
 
@@ -32,9 +40,14 @@ class NotificationService
             $user = $participant->user;
             if (!$user || $participant->is_muted) continue;
 
-            $this->create($user, 'new_message',
-                $sender->name,
-                $message->body ? substr($message->body, 0, 100) : 'Sent an attachment',
+            $handle = $user->username ?: strtolower(str_replace(' ', '_', $user->name));
+            $mentioned = stripos($body, '@' . $handle) !== false
+                || stripos($body, '@' . strtok($user->name, ' ')) !== false;
+            if (!$mentioned) continue;
+
+            $this->create($user, 'mention',
+                $sender->name . ' mentioned you',
+                substr($body, 0, 100),
                 ['conversation_id' => $conversation->id, 'message_id' => $message->id]
             );
         }
