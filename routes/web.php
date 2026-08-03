@@ -130,6 +130,12 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
         Route::patch('/users/{user}/permissions', [\App\Http\Controllers\Admin\UserController::class, 'updatePermissions'])->name('users.permissions');
         Route::get('/activity', [\App\Http\Controllers\Admin\ActivityLogController::class, 'index'])->name('activity');
         Route::get('/health', [\App\Http\Controllers\Admin\HealthController::class, 'index'])->name('health');
+        Route::get('/conversations', [\App\Http\Controllers\Admin\ConversationController::class, 'index'])->name('conversations');
+        Route::get('/conversations/{conversation}', [\App\Http\Controllers\Admin\ConversationController::class, 'show'])->name('conversations.show');
+        Route::delete('/conversations/{conversation}', [\App\Http\Controllers\Admin\ConversationController::class, 'destroy'])->name('conversations.destroy');
+        Route::get('/reports', [\App\Http\Controllers\Admin\ReportController::class, 'index'])->name('reports');
+        Route::post('/reports/{report}/dismiss', [\App\Http\Controllers\Admin\ReportController::class, 'dismiss'])->name('reports.dismiss');
+        Route::post('/reports/{report}/ban', [\App\Http\Controllers\Admin\ReportController::class, 'banUser'])->name('reports.ban');
         Route::get('/messages', [\App\Http\Controllers\Admin\MessageController::class, 'index'])->name('messages');
         Route::delete('/messages/{message}', [\App\Http\Controllers\Admin\MessageController::class, 'destroy'])->name('messages.destroy');
         Route::get('/groups', [\App\Http\Controllers\Admin\GroupController::class, 'index'])->name('groups');
