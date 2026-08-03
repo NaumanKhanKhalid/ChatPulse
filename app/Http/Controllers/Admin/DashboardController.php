@@ -31,9 +31,26 @@ class DashboardController extends Controller
             ];
         });
 
+        // Hourly breakdown — last 24 hours
+        $hours = collect(range(23, 0))->map(function ($i) {
+            $h = now()->subHours($i)->startOfHour();
+            return [
+                'label' => $h->format('ga'),
+                'count' => Message::whereBetween('created_at', [$h, $h->copy()->endOfHour()])->count(),
+            ];
+        });
+
         $recentUsers = User::latest()->limit(8)->get();
         $recentMessages = Message::with('user', 'conversation')->latest()->limit(8)->get();
 
-        return view('admin.dashboard', compact('stats', 'days', 'recentUsers', 'recentMessages'));
+        // Online users for the live presence widget (Echo presence channel updates this live)
+        $onlineUsers = User::where('is_online', true)->limit(30)->get()
+            ->map(fn($u) => [
+                'id' => $u->id, 'name' => $u->name,
+                'grad' => $u->avatarGradient(),
+                'initials' => collect(explode(' ', $u->name))->map(fn($w) => strtoupper(substr($w, 0, 1)))->take(2)->join(''),
+            ])->values();
+
+        return view('admin.dashboard', compact('stats', 'days', 'hours', 'recentUsers', 'recentMessages', 'onlineUsers'));
     }
 }

@@ -29,6 +29,61 @@
     @endforeach
 </div>
 
+{{-- Live system health --}}
+<div class="adm-card" style="margin-bottom:16px">
+    <div class="adm-card-head">
+        <h3>System Health <span class="adm-live-dot" title="Live"></span></h3>
+        <span class="adm-card-sub" id="healthTs">updating…</span>
+    </div>
+    <div class="adm-health" id="healthGrid">
+        <div class="adm-hw"><span class="adm-hw-lbl">CPU</span><div class="adm-meter"><span id="hCpuBar" style="width:0%"></span></div><span class="adm-hw-val" id="hCpu">—</span></div>
+        <div class="adm-hw"><span class="adm-hw-lbl">Memory</span><div class="adm-meter"><span id="hMemBar" style="width:0%"></span></div><span class="adm-hw-val" id="hMem">—</span></div>
+        <div class="adm-hw"><span class="adm-hw-lbl">Disk</span><div class="adm-meter"><span id="hDiskBar" style="width:0%"></span></div><span class="adm-hw-val" id="hDisk">—</span></div>
+        <div class="adm-hw"><span class="adm-hw-lbl">Database</span><span class="adm-hstat" id="hDb">—</span></div>
+        <div class="adm-hw"><span class="adm-hw-lbl">Reverb WS</span><span class="adm-hstat" id="hReverb">—</span></div>
+        <div class="adm-hw"><span class="adm-hw-lbl">Queue</span><span class="adm-hstat" id="hQueue">—</span></div>
+        <div class="adm-hw"><span class="adm-hw-lbl">Failed Jobs</span><span class="adm-hstat" id="hFailed">—</span></div>
+        <div class="adm-hw"><span class="adm-hw-lbl">Msgs / hour</span><span class="adm-hstat" id="hMph">—</span></div>
+    </div>
+</div>
+
+<div class="adm-grid2" style="margin-bottom:16px">
+    {{-- Live online users (WebSocket presence) --}}
+    <div class="adm-card">
+        <div class="adm-card-head">
+            <h3>Online Right Now <span class="adm-live-dot" title="Live via WebSocket"></span></h3>
+            <span class="adm-card-sub"><b id="onlineCount">{{ $onlineUsers->count() }}</b> users</span>
+        </div>
+        <div class="adm-online" id="onlineList">
+            @foreach($onlineUsers as $u)
+            <div class="adm-online-u" data-uid="{{ $u['id'] }}" title="{{ $u['name'] }}">
+                <div class="avatar" style="width:36px;height:36px;background:linear-gradient(135deg,{{ $u['grad'][0] }},{{ $u['grad'][1] }});font-size:13px">{{ $u['initials'] }}</div>
+                <span class="adm-online-dot"></span>
+                <span class="adm-online-name">{{ \Illuminate\Support\Str::limit($u['name'], 10, '') }}</span>
+            </div>
+            @endforeach
+        </div>
+        <p class="adm-empty" id="onlineEmpty" style="{{ $onlineUsers->count() ? 'display:none' : '' }}">Nobody online right now.</p>
+    </div>
+
+    {{-- 24-hour hourly activity --}}
+    <div class="adm-card">
+        <div class="adm-card-head">
+            <h3>Hourly Activity</h3>
+            <span class="adm-card-sub">Last 24 hours</span>
+        </div>
+        @php $hmax = max(1, $hours->max('count')); @endphp
+        <div class="adm-heat">
+            @foreach($hours as $h)
+            <div class="adm-heat-col" title="{{ $h['label'] }} — {{ $h['count'] }} messages">
+                <div class="adm-heat-cell" style="opacity:{{ $h['count'] ? max(.18, round($h['count']/$hmax, 2)) : .06 }}"></div>
+                @if($loop->index % 4 === 0)<span class="adm-heat-lbl">{{ $h['label'] }}</span>@endif
+            </div>
+            @endforeach
+        </div>
+    </div>
+</div>
+
 <div class="adm-grid2">
     {{-- 7-day activity chart --}}
     <div class="adm-card">
@@ -94,4 +149,76 @@
         </tbody>
     </table>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    /* ---- Live system health (10s refresh) ---- */
+    const $id = x => document.getElementById(x);
+    function meter(barId, valId, pct, suffix) {
+        if (pct === null || pct === undefined) { $id(valId).textContent = 'n/a'; return; }
+        $id(barId).style.width = pct + '%';
+        $id(barId).style.background = pct > 85 ? '#ef4444' : pct > 65 ? '#f59e0b' : 'var(--primary)';
+        $id(valId).textContent = pct + '%' + (suffix || '');
+    }
+    function stat(id, ok, text) {
+        const el = $id(id);
+        el.textContent = text;
+        el.className = 'adm-hstat ' + (ok ? 'ok' : 'bad');
+    }
+    async function pollHealth() {
+        try {
+            const r = await fetch('{{ route('admin.health') }}', { headers: { 'Accept': 'application/json' } });
+            const d = await r.json();
+            meter('hCpuBar', 'hCpu', d.cpu_pct);
+            meter('hMemBar', 'hMem', d.mem_pct, d.mem_total_gb ? ' of ' + d.mem_total_gb + 'GB' : '');
+            meter('hDiskBar', 'hDisk', d.disk_pct);
+            stat('hDb', d.db_ok, d.db_ok ? 'Connected · ' + d.db_ms + 'ms' : 'DOWN');
+            stat('hReverb', d.reverb_ok, d.reverb_ok ? 'Running' : 'Offline');
+            stat('hQueue', d.pending_jobs < 50, d.pending_jobs + ' pending');
+            stat('hFailed', d.failed_jobs === 0, String(d.failed_jobs));
+            stat('hMph', true, String(d.messages_last_hour));
+            $id('healthTs').textContent = 'updated ' + d.ts;
+        } catch (e) { $id('healthTs').textContent = 'fetch failed — retrying'; }
+    }
+    pollHealth();
+    setInterval(pollHealth, 10000);
+
+    /* ---- Live online users via Reverb presence channel (WebSocket push, no polling) ---- */
+    function initPresence() {
+        if (!window.Echo) { setTimeout(initPresence, 500); return; }
+        const list = $id('onlineList'), empty = $id('onlineEmpty'), count = $id('onlineCount');
+        const online = new Map();
+        document.querySelectorAll('.adm-online-u').forEach(el => online.set(+el.dataset.uid, true));
+        function grad(name) {
+            let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360;
+            return [`hsl(${h},80%,72%)`, `hsl(${h},65%,38%)`];
+        }
+        function addUser(u) {
+            if (online.has(u.id)) return;
+            online.set(u.id, true);
+            const ini = u.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+            const [g1, g2] = grad(u.name);
+            const el = document.createElement('div');
+            el.className = 'adm-online-u'; el.dataset.uid = u.id; el.title = u.name;
+            el.innerHTML = `<div class="avatar" style="width:36px;height:36px;background:linear-gradient(135deg,${g1},${g2});font-size:13px">${ini}</div><span class="adm-online-dot"></span><span class="adm-online-name">${u.name.slice(0, 10)}</span>`;
+            list.appendChild(el);
+            refresh();
+        }
+        function removeUser(u) {
+            online.delete(u.id);
+            list.querySelector(`[data-uid="${u.id}"]`)?.remove();
+            refresh();
+        }
+        function refresh() {
+            count.textContent = online.size;
+            empty.style.display = online.size ? 'none' : '';
+        }
+        window.Echo.join('app')
+            .here(users => { list.innerHTML = ''; online.clear(); users.forEach(addUser); refresh(); })
+            .joining(addUser)
+            .leaving(removeUser);
+    }
+    initPresence();
+});
+</script>
 @endsection

@@ -132,6 +132,9 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
         Route::post('/users/{user}/ban', [\App\Http\Controllers\Admin\UserController::class, 'ban'])->name('users.ban');
         Route::post('/users/{user}/unban', [\App\Http\Controllers\Admin\UserController::class, 'unban'])->name('users.unban');
         Route::patch('/users/{user}/role', [\App\Http\Controllers\Admin\UserController::class, 'changeRole'])->name('users.role');
+        Route::patch('/users/{user}/permissions', [\App\Http\Controllers\Admin\UserController::class, 'updatePermissions'])->name('users.permissions');
+        Route::get('/activity', [\App\Http\Controllers\Admin\ActivityLogController::class, 'index'])->name('activity');
+        Route::get('/health', [\App\Http\Controllers\Admin\HealthController::class, 'index'])->name('health');
         Route::get('/messages', [\App\Http\Controllers\Admin\MessageController::class, 'index'])->name('messages');
         Route::delete('/messages/{message}', [\App\Http\Controllers\Admin\MessageController::class, 'destroy'])->name('messages.destroy');
         Route::get('/groups', [\App\Http\Controllers\Admin\GroupController::class, 'index'])->name('groups');

@@ -970,3 +970,41 @@ html.dark .adm-badge.red { color: #fca5a5; }
 /* Pagination */
 .adm-pager { padding: 12px 16px; }
 .adm-pager nav { font-size: 13px; }
+
+/* ===== Admin live dashboard widgets ===== */
+.adm-live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-left: 6px; animation: admPulse 1.6s ease-in-out infinite; vertical-align: middle; }
+@keyframes admPulse { 0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16,185,129,.5); } 50% { opacity: .6; box-shadow: 0 0 0 5px rgba(16,185,129,0); } }
+
+/* Health grid */
+.adm-health { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.adm-hw { display: flex; align-items: center; gap: 10px; background: var(--input); border-radius: 11px; padding: 10px 14px; }
+.adm-hw-lbl { font-size: 12px; font-weight: 700; color: var(--text3); width: 74px; flex-shrink: 0; }
+.adm-meter { flex: 1; height: 7px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.adm-meter span { display: block; height: 100%; border-radius: 99px; background: var(--primary); transition: width .5s, background .3s; }
+.adm-hw-val { font-size: 12px; font-weight: 800; color: var(--text); flex-shrink: 0; min-width: 36px; text-align: right; }
+.adm-hstat { font-size: 12.5px; font-weight: 800; color: var(--text2); }
+.adm-hstat.ok { color: var(--primary); }
+.adm-hstat.bad { color: #ef4444; }
+
+/* Online users */
+.adm-online { display: flex; flex-wrap: wrap; gap: 12px; }
+.adm-online-u { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 58px; }
+.adm-online-dot { position: absolute; top: 26px; right: 8px; width: 11px; height: 11px; border-radius: 50%; background: var(--online); border: 2px solid var(--card); }
+.adm-online-name { font-size: 10.5px; font-weight: 700; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 56px; }
+
+/* Hourly heatmap */
+.adm-heat { display: flex; align-items: flex-end; gap: 3px; height: 120px; padding-top: 8px; }
+.adm-heat-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+.adm-heat-cell { width: 100%; height: 78px; border-radius: 5px; background: var(--primary); transition: opacity .3s; }
+.adm-heat-lbl { font-size: 9.5px; font-weight: 700; color: var(--text3); }
+
+/* Permissions row */
+.adm-perms-row { display: none; }
+.adm-perms-row.open { display: table-row; }
+.adm-perms-row td { background: var(--side) !important; padding: 10px 16px !important; }
+.adm-perms { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.adm-perms-lbl { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); }
+.adm-perm { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--text2); cursor: pointer; user-select: none; }
+.adm-perm input { accent-color: var(--primary); width: 15px; height: 15px; cursor: pointer; }
+.adm-act.dim { color: var(--text2); background: var(--input); }
+.adm-act.dim:hover { background: var(--hover); }

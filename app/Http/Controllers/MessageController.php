@@ -26,6 +26,13 @@ class MessageController extends Controller
         $user = auth()->user();
         $data = $request->validated();
 
+        if ($request->hasFile('attachments') && !$user->hasPerm('can_upload_files')) {
+            return response()->json(['error' => 'You do not have permission to upload files.'], 403);
+        }
+        if (($data['type'] ?? '') === 'voice' && !$user->hasPerm('can_send_voice')) {
+            return response()->json(['error' => 'You do not have permission to send voice messages.'], 403);
+        }
+
         $message = $this->messageService->send($conversation, $user, $data);
 
         // Handle file attachments
@@ -66,6 +73,7 @@ class MessageController extends Controller
     {
         $request->validate(['conversation_ids' => ['required','array','min:1']]);
         if ($message->trashed()) return response()->json(['error' => 'Cannot forward deleted message.'], 422);
+        if (!auth()->user()->hasPerm('can_forward')) return response()->json(['error' => 'You do not have permission to forward messages.'], 403);
         $forwarded = $this->messageService->forward($message, auth()->user(), $request->conversation_ids);
         return response()->json(['count' => count($forwarded)]);
     }

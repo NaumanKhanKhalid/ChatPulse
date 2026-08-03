@@ -214,6 +214,22 @@ ChatPulse-styled (dark sidebar, green accents, dark-mode toggle, admin avatar in
 - **Security**: IP ban form (IP + reason + optional expiry), active IP bans list with permanent/expiring tags, banned users list with avatars + reasons, unban actions
 - Middleware-protected (`admin`), flash success/error messages
 
+### 20a. Real-time Admin Monitoring
+- **Live System Health widget** (`GET /admin/health`, 10s refresh): CPU load (normalized per core), memory %, disk %, DB ping latency, **Reverb WebSocket port check**, queue pending jobs, failed jobs count, messages/hour — color-coded meters (green/amber/red)
+- **Live "Online Right Now" panel**: subscribes to the same Reverb `presence-app` channel as the chat — users appear/disappear **instantly via WebSocket push (no polling)** with avatars and live count
+- **Hourly Activity heatmap**: last 24 hours message volume as opacity-scaled heat cells (on top of the 7-day bar chart)
+
+### 20b. Granular Permissions (custom, Spatie-style)
+- `permissions` JSON column on users; `User::PERMISSIONS` registry: `can_create_group`, `can_upload_files`, `can_send_voice`, `can_call`, `can_forward`
+- `User::hasPerm($key)` — admins always pass, stored JSON overrides defaults
+- Admin Users page: **"Perms" button** expands per-user checkbox row, saved via `PATCH /admin/users/{user}/permissions`
+- **Enforced server-side** in GroupController (create group), MessageController (attachments, voice, forward), CallController (initiate) — 403 with clear message
+
+### 20c. Audit Trail (Activity Log)
+- `admin_logs` table: admin, action, target (type/id/label), details, IP, timestamp
+- `AdminLog::record()` helper (never throws) wired into: user ban/unban/role-change/permissions, message delete, group delete, IP ban/unban
+- **Activity Log page** in admin nav: searchable, filterable by action, color-coded badges (ban/delete=red, unban=green), admin avatars, relative timestamps
+
 ---
 
 ## 21. Design System

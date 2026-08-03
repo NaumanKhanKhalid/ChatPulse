@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminLog;
 use App\Models\Message;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,9 @@ class MessageController extends Controller
 
     public function destroy(Message $message): RedirectResponse
     {
+        $excerpt = \Illuminate\Support\Str::limit($message->body ?: '['.$message->type.']', 60);
         $message->delete();
+        AdminLog::record('message.delete', 'message', $message->id, $excerpt, 'by '.($message->user?->name ?? 'unknown'));
         return back()->with('success', 'Message deleted.');
     }
 }

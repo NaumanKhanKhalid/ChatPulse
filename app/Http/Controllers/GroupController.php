@@ -43,6 +43,9 @@ class GroupController extends Controller
         if (auth()->user()->is_guest) {
             return back()->with('error', 'Guests cannot create groups.');
         }
+        if (!auth()->user()->hasPerm('can_create_group')) {
+            return back()->with('error', 'You do not have permission to create groups.');
+        }
         $conversation = $this->conversationService->createGroup(auth()->user(), $request->validated());
         return redirect()->route('chat.conversation', $conversation)->with('success', 'Group created!');
     }
