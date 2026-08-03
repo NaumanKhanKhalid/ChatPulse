@@ -358,7 +358,7 @@
     // Own messages: no avatar, no name header (WhatsApp style — time lives inside bubble)
     const av = mine ? '' : (grouped ? `<span class="b-gutter"></span>` : avatar(u, 38));
     const spamBadge = (!mine && isSuspiciousUser(u)) ? '<span class="spam-badge" title="Flagged account">⚠ spam?</span>' : '';
-    const head = (grouped || mine) ? '' : `<div class="b-head"><span class="b-name">${esc(u.name)}</span>${u.guest ? '<span class="g-badge">guest</span>' : ''}${u.role === 'admin' ? '<span class="a-badge">admin</span>' : ''}${spamBadge}<span class="b-time">${esc(msg.t)}</span></div>`;
+    const head = (grouped || mine) ? '' : `<div class="b-head"><span class="b-name">${esc(u.name)}</span>${u.guest ? '<span class="g-badge">guest</span>' : ''}${u.role === 'admin' ? '<span class="a-badge">admin</span>' : ''}${spamBadge}</div>`;
 
     let body = '';
     if (spam) {
@@ -385,9 +385,9 @@
     const reax = renderReax(msg);
     const pin = msg.pinned ? `<span class="pin-flag"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/><path d="M12 14v7" stroke="currentColor" stroke-width="1.6"/></svg>Pinned</span>` : '';
 
-    // Inject time+tick inside the text bubble (WhatsApp style float)
-    const footInner = (mine && !msg.deleted && !msg.uploading && !msg.uploadFailed)
-      ? `<span class="b-foot">${statusTick(msg)}</span>` : '';
+    // Inject time (+ ticks for mine) inside EVERY bubble — WhatsApp style
+    const footInner = (!msg.deleted && !msg.uploading && !msg.uploadFailed)
+      ? `<span class="b-foot">${mine ? statusTick(msg) : `<span class="b-time-s">${esc(msg.t || '')}</span>`}</span>` : '';
     const uploadFoot = (mine && msg.uploading) ? `<div class="b-foot-out"><span class="up-status">Uploading…</span></div>` : '';
 
     // Append foot into b-text if text message, else show below
