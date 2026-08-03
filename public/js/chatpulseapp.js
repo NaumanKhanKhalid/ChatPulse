@@ -306,7 +306,7 @@
       right = `<span class="up-pct">${Math.round(msg.progress || 0)}%</span>`;
     } else {
       sub = `<div class="file-sub">${esc(ext.toUpperCase())} · ${esc(f.size)}</div>`;
-      right = `<button class="file-dl" title="Download"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+      right = f.url ? `<button class="file-dl" title="Download" data-dl="${esc(f.url)}" data-dlname="${esc(f.name)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` : '';
     }
     return `<div class="file-msg ${msg.uploadFailed ? 'failed' : ''}">
       <div class="file-ic" style="background:${col}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14 3v5h5M7 3h8l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg></div>
@@ -643,11 +643,21 @@
     $$('[data-spamreport]').forEach(b => b.addEventListener('click', () => { const m = c.messages.find(x => x.id === b.dataset.spamreport); if (m) reportMessage(c, m); }));
     $$('[data-lightbox]').forEach(b => b.addEventListener('click', () => openLightbox(b.dataset.lightbox)));
     $$('.msg-info-trigger[data-msginfo]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openMsgInfo(c, b.dataset.msginfo); }));
+    $$('[data-dl]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); downloadFile(b.dataset.dl, b.dataset.dlname); }));
+  }
+  function downloadFile(url, name) {
+    const a = document.createElement('a');
+    a.href = url; a.download = name || ''; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
   }
   function openLightbox(src) {
     const ov = document.createElement('div'); ov.className = 'lightbox-ov';
-    ov.innerHTML = `<button class="lb-close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></button><img src="${src}" />`;
+    ov.innerHTML = `
+      <button class="lb-dl" title="Download image"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="lb-close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <img src="${src}" />`;
     document.body.appendChild(ov);
+    ov.querySelector('.lb-dl').addEventListener('click', e => { e.stopPropagation(); downloadFile(src, (src.split('/').pop() || 'image').split('?')[0]); });
     ov.addEventListener('click', () => ov.remove());
   }
 
@@ -1364,6 +1374,13 @@
       if (xhr.status >= 200 && xhr.status < 300) {
         const data = JSON.parse(xhr.responseText);
         m.id = 'db' + data.message.id; m.uploading = false; m.status = 'sent';
+        // Swap local blob previews for real server URLs (download + refresh-proof)
+        const atts = data.message.attachments || [];
+        const imgAtts = atts.filter(a => a.file_type && a.file_type.startsWith('image/'));
+        const fileAtts = atts.filter(a => !(a.file_type && a.file_type.startsWith('image/')));
+        if (m.images && imgAtts.length) m.images = imgAtts.map(a => ({ src: a.url, name: a.original_name }));
+        else if (m.image && imgAtts.length) m.image = { src: imgAtts[0].url, name: imgAtts[0].original_name };
+        if (m.file && fileAtts.length) m.file.url = fileAtts[0].url;
         if (c.id === activeId) renderThread(c);
       } else { failUpload(c, m); }
     };
@@ -1639,7 +1656,7 @@
           const fileAtts = msg.attachments.filter(a => !(a.file_type && a.file_type.startsWith('image/')));
           if (imgAtts.length > 1) cp.images = imgAtts.map(a => ({ src: a.url, name: a.original_name }));
           else if (imgAtts.length === 1) cp.image = { src: imgAtts[0].url, name: imgAtts[0].original_name };
-          if (fileAtts.length) cp.file = { name: fileAtts[0].original_name, size: fileAtts[0].formatted_size || '?' };
+          if (fileAtts.length) cp.file = { name: fileAtts[0].original_name, size: fileAtts[0].formatted_size || '?', url: fileAtts[0].url };
         }
         c.messages.push(cp);
         const u = users[msg.user_id];

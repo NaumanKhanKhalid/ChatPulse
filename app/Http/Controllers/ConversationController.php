@@ -223,7 +223,7 @@ class ConversationController extends Controller
                 $msg['image'] = ['src' => $imgs[0]->url, 'name' => $imgs[0]->original_name];
             }
             if ($files->count()) {
-                $msg['file'] = ['name' => $files[0]->original_name, 'size' => $files[0]->formatted_size ?? '?'];
+                $msg['file'] = ['name' => $files[0]->original_name, 'size' => $files[0]->formatted_size ?? '?', 'url' => $files[0]->url];
             }
         }
 
