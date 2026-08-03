@@ -11,8 +11,8 @@ class ActivityLogController extends Controller
     public function index(Request $request): View
     {
         $q = AdminLog::with('admin');
-        if ($a = $request->get('action')) $q->where('action', $a);
-        if ($s = $request->get('q')) {
+        if ($a = $request->query('action')) $q->where('action', $a);
+        if ($s = $request->query('q')) {
             $q->where(fn($w) => $w->where('target_label', 'like', "%$s%")
                 ->orWhere('details', 'like', "%$s%"));
         }

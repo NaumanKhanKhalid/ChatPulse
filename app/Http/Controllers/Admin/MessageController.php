@@ -13,8 +13,8 @@ class MessageController extends Controller
     public function index(Request $request): View
     {
         $q = Message::with('user', 'conversation');
-        if ($s = $request->get('q')) $q->where('body', 'like', "%$s%");
-        if ($uid = $request->get('user')) $q->where('user_id', $uid);
+        if ($s = $request->query('q')) $q->where('body', 'like', "%$s%");
+        if ($uid = $request->query('user')) $q->where('user_id', $uid);
         $messages = $q->orderByDesc('created_at')->paginate(25)->withQueryString();
         return view('admin.messages', compact('messages'));
     }
