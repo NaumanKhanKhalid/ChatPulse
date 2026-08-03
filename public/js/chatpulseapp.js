@@ -858,9 +858,14 @@
       if (!data) return;
       const saved = data.message;
       msg.id = 'db' + saved.id;
-      msg.status = 'sent';
+      // Never downgrade — a delivered/read receipt may have already arrived
+      if (msg.status === 'sending' || !msg.status) msg.status = 'sent';
+      // Apply delivered receipt that arrived BEFORE we knew our db id (race)
+      if (c._pendingDelivered && c._pendingDelivered.has(String(saved.id))) {
+        c._pendingDelivered.delete(String(saved.id));
+        if (msg.status === 'sent') { msg.status = 'delivered'; msg.deliveredAt = nowTime(); }
+      }
       if (c.id === activeId) renderThread(c);
-      // 'delivered' and 'read' only via real-time (Reverb WebSocket) — not faked
     }).catch(() => { msg.status = 'failed'; if (c.id === activeId) renderThread(c); renderList($('#search').value); });
   }
 
@@ -1736,7 +1741,12 @@
       .listenForWhisper('message-delivered', e => {
         // message_id comes as numeric string, our ids are prefixed 'db'
         const msg = c.messages.find(m => m.id === 'db' + e.message_id || m.id === e.message_id || m.id === String(e.message_id));
-        if (!msg || msg.user !== me.id) return;
+        if (!msg) {
+          // Whisper beat our HTTP response (temp id still in place) — buffer it
+          (c._pendingDelivered = c._pendingDelivered || new Set()).add(String(e.message_id));
+          return;
+        }
+        if (msg.user !== me.id) return;
         if (msg.status === 'sent' || msg.status === 'sending') {
           msg.status = 'delivered';
           msg.deliveredAt = e.at || nowTime();
