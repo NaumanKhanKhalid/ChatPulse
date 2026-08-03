@@ -1009,20 +1009,37 @@ html.dark .adm-badge.red { color: #fca5a5; }
 .adm-act.dim { color: var(--text2); background: var(--input); }
 .adm-act.dim:hover { background: var(--hover); }
 
-/* ===== Compact scale for smaller laptop screens (e.g. 1366x768) =====
-   zoom shrinks rendered pixels, so viewport-height layouts must be
-   compensated (height: 100vh / zoom) or a gap appears at the bottom. */
+/* ===== Compact sizes for smaller laptop screens (e.g. 1366x768) =====
+   Real size reductions, NOT zoom — zoom causes blurry text on Windows. */
 @media (max-width: 1440px) {
-  body { zoom: 0.9; }
-  .app, .adm-side { height: calc(100vh / 0.9); }
-  .app, .adm-app { width: calc(100vw / 0.9); }
-  .adm-app { min-height: calc(100vh / 0.9); }
-}
-@media (max-width: 1200px) {
-  body { zoom: 0.85; }
-  .app, .adm-side { height: calc(100vh / 0.85); }
-  .app, .adm-app { width: calc(100vw / 0.85); }
-  .adm-app { min-height: calc(100vh / 0.85); }
+  /* narrower panels */
+  #list { width: 272px; }
+  #rightPanel { width: 272px; }
+  #rail { width: 58px; }
+  /* list */
+  .list-title { font-size: 19px; }
+  .search { height: 38px; }
+  .convo { padding: 8px 9px; gap: 10px; }
+  .convo-name { font-size: 13.5px; }
+  .convo-last { font-size: 12px; }
+  /* thread */
+  #thread { padding: 14px 16px 6px; }
+  .msg:not(.grouped) { margin-top: 12px; }
+  .b-text { font-size: 13.5px; padding: 6px 11px 3px 11px; }
+  .b-name { font-size: 12.5px; }
+  .b-av, .b-gutter { width: 34px; }
+  .b-av .avatar { width: 34px !important; height: 34px !important; font-size: 12.5px !important; }
+  /* composer */
+  .composer-wrap { padding: 6px 14px 14px; }
+  #composer-input { font-size: 13.5px; min-height: 32px; }
+  .ct { width: 32px; height: 32px; }
+  #sendBtn, #recSend { width: 38px; height: 38px; }
+  /* header */
+  #chatHeader { height: 60px; padding: 0 16px; }
+  /* right panel */
+  .panel-hero { padding: 20px 16px 14px; }
+  .panel-name { font-size: 15.5px; }
+  .psec { padding: 13px 15px; }
 }
 
 /* ===== Right panel — user detail view ===== */
