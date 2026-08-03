@@ -297,7 +297,8 @@ window.CPOverlays = (function () {
     let mic = true, cam = type === 'video', screen = false, sec = 0;
     const R = window.CP_ROUTES || {};
     let callId = incomingCallId || null;
-    let pc = null, callChannel = null;
+    let pc = null, callChannel = null, ringTimer = null;
+    const toastSafe = m => { try { window.CPToast ? window.CPToast(m) : console.log(m); } catch (e) {} };
 
     function postJson(url, data) {
       return fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
@@ -347,10 +348,12 @@ window.CPOverlays = (function () {
         }).catch(() => connected());
       });
       ov.querySelector('[data-decline]')?.addEventListener('click', () => {
+        clearTimeout(ringTimer);
         if (callId) { const url = (R.callDecline || '/calls/{call}/decline').replace('{call}', callId); postJson(url, {}).catch(() => {}); }
         closeCall();
       });
       ov.querySelector('[data-end]')?.addEventListener('click', () => {
+        clearTimeout(ringTimer);
         if (callId) { const url = (R.callEnd || '/calls/{call}/end').replace('{call}', callId); postJson(url, {}).catch(() => {}); }
         closeCall();
       });
@@ -358,13 +361,21 @@ window.CPOverlays = (function () {
         const convDbId = convCpId.replace(/^c/, '');
         const initiateUrl = (R.callInitiate || '/conversations/{conv}/call').replace('{conv}', convDbId);
         postJson(initiateUrl, { type }).then(data => {
-          callId = data.call?.id || data.id || null;
+          if (data && data.error) { toastSafe(data.error); closeCall(); return; }
+          callId = data.call?.id || data.id || data.call_id || null;
           if (window.Echo && callId) {
+            // Subscribe immediately so a decline reaches us while still ringing
             callChannel = window.Echo.private('call.' + callId);
-            callChannel.listen('CallAnswered', () => { setupWebRTC(true); connected(); });
-            callChannel.listen('CallEnded', () => closeCall());
+            callChannel.listen('CallAnswered', () => { clearTimeout(ringTimer); setupWebRTC(true); connected(); });
+            callChannel.listen('CallEnded', () => { toastSafe(target.name + ' declined the call'); closeCall(); });
           }
-        }).catch(() => {});
+          // Stop ringing after 45s — nobody picked up
+          ringTimer = setTimeout(() => {
+            if (callId) { const u = (R.callEnd || '/calls/{call}/end').replace('{call}', callId); postJson(u, {}).catch(() => {}); }
+            toastSafe('No answer');
+            closeCall();
+          }, 45000);
+        }).catch(() => { toastSafe('Could not start the call'); closeCall(); });
       }
     }
 
