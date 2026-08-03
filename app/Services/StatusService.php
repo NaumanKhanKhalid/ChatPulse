@@ -26,8 +26,7 @@ class StatusService
             'status_clears_at' => $clearsAt,
         ]);
 
-        broadcast(new UserStatusUpdated($user));
-
+        try { broadcast(new UserStatusUpdated($user)); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         return $user->fresh();
     }
 }

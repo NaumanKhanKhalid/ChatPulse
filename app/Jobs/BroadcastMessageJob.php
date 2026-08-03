@@ -22,7 +22,7 @@ class BroadcastMessageJob implements ShouldQueue
     public function handle(): void
     {
         $this->message->refresh();
-        broadcast(new MessageSent($this->message));
+        try { broadcast(new MessageSent($this->message)); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
     }
 
     public function failed(Throwable $e): void

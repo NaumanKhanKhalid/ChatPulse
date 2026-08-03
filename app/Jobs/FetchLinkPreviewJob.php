@@ -30,7 +30,7 @@ class FetchLinkPreviewJob implements ShouldQueue
 
         $preview = $service->fetch($this->url);
         if ($preview) {
-            broadcast(new LinkPreviewReady($message->conversation_id, $this->messageId, $preview));
+            try { broadcast(new LinkPreviewReady($message->conversation_id, $this->messageId, $preview)); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         }
     }
 

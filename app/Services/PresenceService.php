@@ -15,7 +15,7 @@ class PresenceService
 
         if ($wasOffline) {
             try {
-                broadcast(new UserPresenceUpdated($user->id, true, now()));
+                try { broadcast(new UserPresenceUpdated($user->id, true, now())); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
             } catch (\Throwable $e) {
                 // Reverb may not be running; presence update is non-critical
             }
@@ -27,7 +27,7 @@ class PresenceService
         $user->update(['is_online' => false, 'last_seen_at' => now()]);
         Cache::forget("user_online:{$user->id}");
         try {
-            broadcast(new UserPresenceUpdated($user->id, false, now()));
+            try { broadcast(new UserPresenceUpdated($user->id, false, now())); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         } catch (\Throwable $e) {
             //
         }
@@ -41,7 +41,7 @@ class PresenceService
         if ($wasOffline) {
             $user->update(['is_online' => true, 'last_seen_at' => now()]);
             try {
-                broadcast(new UserPresenceUpdated($user->id, true, now()));
+                try { broadcast(new UserPresenceUpdated($user->id, true, now())); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
             } catch (\Throwable $e) {
                 //
             }

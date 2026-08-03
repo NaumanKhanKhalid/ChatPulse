@@ -31,14 +31,14 @@ class PinController extends Controller
         );
 
         $groupService->sendSystemMessage($conversation, auth()->user()->name . ' pinned a message');
-        broadcast(new MessagePinned($pin->load('message.user','pinner')))->toOthers();
+        try { broadcast(new MessagePinned($pin->load('message.user','pinner')))->toOthers(); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         return response()->json(['pin' => $pin]);
     }
 
     public function destroy(Conversation $conversation, Message $message): JsonResponse
     {
         MessagePin::where('conversation_id',$conversation->id)->where('message_id',$message->id)->delete();
-        broadcast(new MessageUnpinned($conversation->id, $message->id))->toOthers();
+        try { broadcast(new MessageUnpinned($conversation->id, $message->id))->toOthers(); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         return response()->json(['success' => true]);
     }
 }

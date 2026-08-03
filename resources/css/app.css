@@ -1008,3 +1008,11 @@ html.dark .adm-badge.red { color: #fca5a5; }
 .adm-perm input { accent-color: var(--primary); width: 15px; height: 15px; cursor: pointer; }
 .adm-act.dim { color: var(--text2); background: var(--input); }
 .adm-act.dim:hover { background: var(--hover); }
+
+/* ===== Compact scale for smaller laptop screens (e.g. 1366x768) ===== */
+@media (max-width: 1440px) {
+  body { zoom: 0.9; }
+}
+@media (max-width: 1200px) {
+  body { zoom: 0.85; }
+}

@@ -58,7 +58,7 @@ class PollController extends Controller
         }
 
         $poll->load('options.votes.user');
-        broadcast(new PollUpdated($poll));
+        try { broadcast(new PollUpdated($poll)); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         return response()->json($this->formatPoll($poll, $user->id));
     }
 

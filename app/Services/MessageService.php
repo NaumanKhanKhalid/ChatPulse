@@ -44,8 +44,7 @@ class MessageService
             // in real-time without needing the queue worker.
             // toOthers() excludes the sender's socket so they don't see a duplicate
             // (they already get the message from the HTTP response).
-            broadcast(new MessageSent($message))->toOthers();
-
+            try { broadcast(new MessageSent($message))->toOthers(); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
             NotifyParticipantsJob::dispatch($message);
 
             // Check for URLs and fetch link previews
@@ -67,8 +66,7 @@ class MessageService
             'edited_at' => now(),
         ]);
 
-        broadcast(new MessageUpdated($message->load(['user', 'attachments', 'reactions.user'])))->toOthers();
-
+        try { broadcast(new MessageUpdated($message->load(['user', 'attachments', 'reactions.user'])))->toOthers(); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         return $message;
     }
 
@@ -79,7 +77,7 @@ class MessageService
 
         $message->delete();
 
-        broadcast(new MessageDeleted($conversationId, $messageId));
+        try { broadcast(new MessageDeleted($conversationId, $messageId)); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
     }
 
     public function markConversationAsRead(Conversation $conversation, User $user): void
@@ -124,7 +122,7 @@ class MessageService
                 'last_activity_at' => now(),
             ]);
 
-            broadcast(new MessageSent($message));
+            try { broadcast(new MessageSent($message)); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
             $forwarded[] = $message;
         }
         return $forwarded;
