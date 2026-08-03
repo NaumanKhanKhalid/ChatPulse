@@ -33,15 +33,18 @@ class MessageController extends Controller
             return response()->json(['error' => 'You do not have permission to send voice messages.'], 403);
         }
 
-        $message = $this->messageService->send($conversation, $user, $data);
+        $hasFiles = $request->hasFile('attachments');
+        $message = $this->messageService->send($conversation, $user, $data, deferBroadcast: $hasFiles);
 
-        // Handle file attachments
-        if ($request->hasFile('attachments')) {
+        // Handle file attachments — broadcast only after they are stored
+        // so receivers get the attachment in the realtime payload
+        if ($hasFiles) {
             foreach ($request->file('attachments') as $file) {
                 $attachment = $this->fileUploadService->store($file, $message);
                 ProcessFileUploadJob::dispatch($attachment);
             }
             $message->refresh();
+            try { broadcast(new \App\Events\MessageSent($message))->toOthers(); } catch (\Throwable) { /* Reverb offline */ }
         }
 
         $message->load(['user', 'attachments', 'reactions.user', 'parent.user']);
