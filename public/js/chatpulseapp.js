@@ -535,25 +535,29 @@
         ${u.guest ? `<div class="pp-row"><span class="pp-row-l">Account</span><span class="pp-row-v"><span class="g-badge">guest</span></span></div>` : ''}`);
     }
 
-    // Shared photos grid (single images + album images)
-    const photos = c.messages.filter(x => !x.deleted).flatMap(x => x.images ? x.images : (x.image ? [x.image] : [])).slice(-6).reverse();
-    if (photos.length) {
-      html += section('Shared photos', '', `<div class="pp-photos">${photos.map(p => `<a class="pp-ph" data-lightbox="${p.src}"><img src="${p.src}" alt=""></a>`).join('')}</div>`);
+    // Shared photos grid (single images + album images) — 6 by default, View all toggles
+    const allPhotos = c.messages.filter(x => !x.deleted).flatMap(x => x.images ? x.images : (x.image ? [x.image] : [])).reverse();
+    if (allPhotos.length) {
+      const photos = c._showAllPhotos ? allPhotos : allPhotos.slice(0, 6);
+      const more = allPhotos.length > 6 ? `<button class="pp-viewall" id="ppAllPhotos">${c._showAllPhotos ? 'Show less' : `View all (${allPhotos.length})`}</button>` : '';
+      html += section(`Shared photos · ${allPhotos.length}`, '', `<div class="pp-photos">${photos.map(p => `<a class="pp-ph" data-lightbox="${p.src}"><img src="${p.src}" alt=""></a>`).join('')}</div>${more}`);
     }
 
     if (pinned.length) html += section('Pinned', `<svg width=14 height=14 viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/></svg>`, pinned.map(p => `<button class="pin-item" data-jump="${p.id}"><span class="pin-au">${users[p.user].name.split(' ')[0]}</span><span class="pin-tx">${esc((p.text || '').slice(0, 48))}</span></button>`).join(''));
 
     if (m.group) html += section('Members · ' + c.members.length, '', c.members.map(id => { const u = users[id]; return `<div class="mem" data-uid="${id}" style="cursor:pointer"><span class="avwrap">${avatar(u, 32)}${u.online ? `<span class="pres sm" style="background:${statusColor[u.status]}"></span>` : ''}</span><div class="mem-info"><span class="mem-name">${esc(u.name)}${id === c.members[0] ? '<span class="role">admin</span>' : ''}</span><span class="mem-sub">${u.online ? 'online' : 'offline'}</span></div></div>`; }).join(''));
 
-    // Real shared files — derived from messages with attachments (docs only; photos have their own grid)
-    const sharedFiles = c.messages.filter(m => m.file && !m.deleted).slice(-6).reverse();
-    if (sharedFiles.length) {
+    // Real shared files — 6 by default, View all toggles
+    const allFiles = c.messages.filter(m => m.file && !m.deleted).reverse();
+    if (allFiles.length) {
+      const sharedFiles = c._showAllFiles ? allFiles : allFiles.slice(0, 6);
       const colors = { pdf: '#ef4444', doc: '#3b82f6', docx: '#3b82f6', zip: '#f59e0b', fig: '#7c3aed', md: '#10b981', png: '#06b6d4', jpg: '#06b6d4', jpeg: '#06b6d4' };
-      html += section('Shared files', '', sharedFiles.map(m => {
+      const more = allFiles.length > 6 ? `<button class="pp-viewall" id="ppAllFiles">${c._showAllFiles ? 'Show less' : `View all (${allFiles.length})`}</button>` : '';
+      html += section(`Shared files · ${allFiles.length}`, '', sharedFiles.map(m => {
         const name = m.file.name, size = m.file.size || '';
         const ext = (name.split('.').pop() || '').toLowerCase();
         return fileItem(name, size, colors[ext] || '#8a958f');
-      }).join(''));
+      }).join('') + more);
     }
 
     // Actions (direct chats)
@@ -567,6 +571,8 @@
     $$('[data-jump]').forEach(b => b.addEventListener('click', () => jumpTo(b.dataset.jump)));
     $$('#rightPanel [data-uid]').forEach(b => b.addEventListener('click', () => CPOverlays.openProfile(+b.dataset.uid)));
     $$('#rightPanel [data-lightbox]').forEach(b => b.addEventListener('click', () => openLightbox(b.dataset.lightbox)));
+    $('#ppAllPhotos')?.addEventListener('click', () => { c._showAllPhotos = !c._showAllPhotos; renderPanel(c); });
+    $('#ppAllFiles')?.addEventListener('click', () => { c._showAllFiles = !c._showAllFiles; renderPanel(c); });
     if (c.type === 'direct') {
       const peer = users[c.with];
       $('#qCall')?.addEventListener('click', () => CPOverlays.openCall(peer, 'audio', true, c.id));
