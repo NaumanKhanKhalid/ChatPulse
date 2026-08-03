@@ -49,6 +49,10 @@
             </a>
 
             <span class="adm-nav-lbl">Safety</span>
+            <a href="{{ route('admin.activity') }}" class="adm-nav-item {{ request()->routeIs('admin.activity*') ? 'on' : '' }}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 8v4.5l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="12" r="8.3" stroke="currentColor" stroke-width="1.7"/></svg>
+                Activity Log
+            </a>
             <a href="{{ route('admin.security') }}" class="adm-nav-item {{ request()->routeIs('admin.security*') ? 'on' : '' }}">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 3.5 5 6v5c0 4.5 3 8 7 9.5 4-1.5 7-5 7-9.5V6l-7-2.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9.5 12 2 2 3.5-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Security

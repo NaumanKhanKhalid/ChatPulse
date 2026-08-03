@@ -67,6 +67,7 @@
                 <td class="adm-td-dim">{{ $u->created_at->format('M j, Y') }}</td>
                 <td style="text-align:right">
                     @if($u->id !== auth()->id() && !$u->isAdmin())
+                        <button type="button" class="adm-act dim" onclick="document.getElementById('perms-{{ $u->id }}').classList.toggle('open')">Perms</button>
                         @if($u->is_banned)
                         <form method="POST" action="{{ route('admin.users.unban', $u) }}" class="adm-inline">
                             @csrf
@@ -83,6 +84,23 @@
                     @endif
                 </td>
             </tr>
+            @if($u->id !== auth()->id() && !$u->isAdmin())
+            <tr class="adm-perms-row" id="perms-{{ $u->id }}">
+                <td colspan="5">
+                    <form method="POST" action="{{ route('admin.users.permissions', $u) }}" class="adm-perms">
+                        @csrf @method('PATCH')
+                        <span class="adm-perms-lbl">Permissions:</span>
+                        @foreach(\App\Models\User::PERMISSIONS as $key => [$label, $default])
+                        <label class="adm-perm">
+                            <input type="checkbox" name="{{ $key }}" value="1" {{ $u->hasPerm($key) ? 'checked' : '' }}>
+                            <span>{{ $label }}</span>
+                        </label>
+                        @endforeach
+                        <button type="submit" class="adm-btn" style="height:32px;padding:0 14px;font-size:12px">Save</button>
+                    </form>
+                </td>
+            </tr>
+            @endif
             @endforeach
         </tbody>
     </table>

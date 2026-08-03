@@ -12,9 +12,18 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name','email','password','username','avatar','bio','status_message',
-        'status_type','status_emoji','status_clears_at','role','is_online',
+        'status_type','status_emoji','status_clears_at','role','permissions','is_online',
         'last_seen_at','is_guest','is_banned','banned_at','banned_reason',
         'dark_mode','email_notifications','email_digest',
+    ];
+
+    /** Granular permissions — key => [label, default]. Guests get restricted defaults. */
+    public const PERMISSIONS = [
+        'can_create_group' => ['Create groups', true],
+        'can_upload_files' => ['Upload files & images', true],
+        'can_send_voice'   => ['Send voice messages', true],
+        'can_call'         => ['Audio/video calls', true],
+        'can_forward'      => ['Forward messages', true],
     ];
 
     protected $hidden = ['password','remember_token'];
@@ -31,6 +40,7 @@ class User extends Authenticatable
             'last_seen_at' => 'datetime',
             'banned_at' => 'datetime',
             'status_clears_at' => 'datetime',
+            'permissions' => 'array',
         ];
     }
 
@@ -45,6 +55,22 @@ class User extends Authenticatable
     // helpers
     public function isAdmin(): bool { return $this->role === 'admin'; }
     public function isGuest(): bool { return $this->is_guest; }
+
+    /** Check a granular permission. Admins always pass; stored JSON overrides defaults. */
+    public function hasPerm(string $key): bool
+    {
+        if ($this->isAdmin()) return true;
+        if (!isset(self::PERMISSIONS[$key])) return false;
+        $overrides = $this->permissions ?? [];
+        if (array_key_exists($key, $overrides)) return (bool) $overrides[$key];
+        return (bool) self::PERMISSIONS[$key][1];
+    }
+
+    /** Full resolved permission map for this user. */
+    public function resolvedPerms(): array
+    {
+        return collect(self::PERMISSIONS)->mapWithKeys(fn($v, $k) => [$k => $this->hasPerm($k)])->all();
+    }
     public function getAvatarUrlAttribute(): ?string {
         if ($this->avatar) return asset('storage/' . $this->avatar);
         return null;

@@ -33,6 +33,9 @@ class CallController extends Controller
         if (!$conversation->participants()->where('user_id', auth()->id())->exists()) {
             return response()->json(['error' => 'Access denied.'], 403);
         }
+        if (!auth()->user()->hasPerm('can_call')) {
+            return response()->json(['error' => 'You do not have permission to make calls.'], 403);
+        }
 
         $call = Call::create([
             'conversation_id' => $conversation->id,

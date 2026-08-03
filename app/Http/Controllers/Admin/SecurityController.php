@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminLog;
 use App\Models\IpBan;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -32,12 +33,14 @@ class SecurityController extends Controller
         );
 
         Cache::forget("ip_ban:{$request->ip_address}");
+        AdminLog::record('ip.ban', 'ip', null, $request->ip_address, $request->reason ?: 'No reason given');
         return back()->with('success', "IP {$request->ip_address} banned.");
     }
 
     public function unbanIp(IpBan $ipBan): RedirectResponse
     {
         Cache::forget("ip_ban:{$ipBan->ip_address}");
+        AdminLog::record('ip.unban', 'ip', null, $ipBan->ip_address);
         $ipBan->delete();
         return back()->with('success', 'IP unbanned.');
     }
