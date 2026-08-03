@@ -22,6 +22,7 @@
     return { name: c.name, sub: c.desc, av: { initials: c.initials, grad: c.grad }, group: true };
   }
   const statusColor = { available: '#10b981', busy: '#ef4444', away: '#f59e0b' };
+  const statusLabel = { available: 'Active now', busy: 'Busy', away: 'Away' };
 
   /* ---------- conversation list ---------- */
   function renderList(filter) {
@@ -102,7 +103,7 @@
         <span class="avwrap">${avatar(u, 44)}${u.online ? `<span class="pres" style="background:${statusColor[u.status] || '#10b981'}"></span>` : ''}</span>
         <span class="convo-main">
           <span class="convo-top"><span class="convo-name">${esc(u.name)}</span></span>
-          <span class="convo-bot"><span class="convo-last">@${esc(u.username)} · ${u.online ? (u.status === 'available' ? 'Active now' : esc(u.status)) : (u.last ? 'last seen ' + esc(u.last) : 'offline')}</span></span>
+          <span class="convo-bot"><span class="convo-last">@${esc(u.username)} · ${u.online ? esc(statusLabel[u.status] || 'Active now') : (u.last ? 'Last seen ' + esc(u.last) : 'Offline')}</span></span>
         </span>
         <span class="person-msg" title="Message"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 6.5C4 5.12 5.12 4 6.5 4h11C18.88 4 20 5.12 20 6.5v7c0 1.38-1.12 2.5-2.5 2.5H10l-3.6 3a1 1 0 0 1-1.65-.77V6.5Z" stroke="currentColor" stroke-width="1.7"/></svg></span>
       </div>`).join('');
@@ -201,7 +202,7 @@
     const m = convoMeta(c);
     let sub;
     if (m.group) sub = `${c.members.length} members · ${c.public ? 'Public' : 'Private'}`;
-    else if (c.typing || m.online && m.status) sub = m.online ? `<span class="hdr-on">${m.status === 'available' ? 'Active now' : m.status}</span>` : (m.u.last ? 'last seen ' + m.u.last : 'offline');
+    else if (c.typing || m.online && m.status) sub = m.online ? `<span class="hdr-on">${esc(statusLabel[m.status] || 'Active now')}</span>` : (m.u.last ? 'Last seen ' + m.u.last : 'Offline');
     const stack = m.group ? `<div class="hdr-stack">${c.members.slice(0, 3).map(id => `<span class="mini-av" style="background:linear-gradient(135deg,${users[id].grad[0]},${users[id].grad[1]})">${users[id].initials}</span>`).join('')}${c.members.length > 3 ? `<span class="mini-av more">+${c.members.length - 3}</span>` : ''}</div>` : '';
     $('#chatHeader').innerHTML = `
       <button id="backBtn" title="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -517,7 +518,7 @@
   function renderPanel(c) {
     const m = convoMeta(c);
     const pinned = c.messages.filter(x => (c.pinnedIds || []).includes(x.id));
-    const presLabel = !m.group ? (m.online ? `<span class="pp-pres on"><span class="pp-dot" style="background:${statusColor[m.status] || '#10b981'}"></span>${m.status === 'busy' ? 'Busy' : m.status === 'away' ? 'Away' : 'Active now'}</span>` : `<span class="pp-pres">${m.u.last ? 'Last seen ' + esc(m.u.last) : 'Offline'}</span>`) : '';
+    const presLabel = !m.group ? (m.online ? `<span class="pp-pres on"><span class="pp-dot" style="background:${statusColor[m.status] || '#10b981'}"></span>${esc(statusLabel[m.status] || 'Active now')}</span>` : `<span class="pp-pres">${m.u.last ? 'Last seen ' + esc(m.u.last) : 'Offline'}</span>`) : '';
     let html = `
       <div class="panel-hero">
         ${avatar(m.av, 72)}
@@ -553,7 +554,7 @@
 
     if (pinned.length) html += section('Pinned', `<svg width=14 height=14 viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/></svg>`, pinned.map(p => `<button class="pin-item" data-jump="${p.id}"><span class="pin-au">${users[p.user].name.split(' ')[0]}</span><span class="pin-tx">${esc((p.text || '').slice(0, 48))}</span></button>`).join(''));
 
-    if (m.group) html += section('Members · ' + c.members.length, '', c.members.map(id => { const u = users[id]; return `<div class="mem" data-uid="${id}" style="cursor:pointer"><span class="avwrap">${avatar(u, 32)}${u.online ? `<span class="pres sm" style="background:${statusColor[u.status]}"></span>` : ''}</span><div class="mem-info"><span class="mem-name">${esc(u.name)}${id === c.members[0] ? '<span class="role">admin</span>' : ''}</span><span class="mem-sub">${u.online ? 'online' : 'offline'}</span></div></div>`; }).join(''));
+    if (m.group) html += section('Members · ' + c.members.length, '', c.members.map(id => { const u = users[id]; return `<div class="mem" data-uid="${id}" style="cursor:pointer"><span class="avwrap">${avatar(u, 32)}${u.online ? `<span class="pres sm" style="background:${statusColor[u.status]}"></span>` : ''}</span><div class="mem-info"><span class="mem-name">${esc(u.name)}${id === c.members[0] ? '<span class="role">admin</span>' : ''}</span><span class="mem-sub">${u.online ? esc(statusLabel[u.status] || 'Active now') : 'Offline'}</span></div></div>`; }).join(''));
 
     // Real shared files — 6 by default, View all toggles
     const allFiles = c.messages.filter(m => m.file && !m.deleted).reverse();
