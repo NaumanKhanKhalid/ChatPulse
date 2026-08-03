@@ -172,7 +172,8 @@ html.dark .msg:hover { background: rgba(255,255,255,.03); }
 /* Grouped: hide avatar space on last-in-group */
 .msg.grouped .b-av { visibility: hidden; }
 /* Extra bottom room in the bubble when a reaction overlaps it */
-.msg.has-reax .b-text, .msg.has-reax .file-msg { padding-bottom: 14px; }
+.msg.has-reax .b-text { padding-bottom: 14px; }
+.msg.has-reax .file-msg { padding-bottom: 16px; }
 .msg.has-reax .img-msg, .msg.has-reax .img-album { margin-bottom: 4px; }
 
 .reply-quote { display: flex; gap: 0; margin-bottom: 6px; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,.06); cursor: pointer; }
@@ -560,7 +561,9 @@ html.dark .spam-badge { background: rgba(239,68,68,.18); }
 .a-badge { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #fff; background: var(--text2); padding: 1px 6px; border-radius: 99px; }
 
 /* file & image messages */
-.file-msg { display: flex; align-items: center; gap: 12px; max-width: 340px; border: 1px solid var(--bubble-in-border); border-radius: 14px; padding: 11px 13px; background: var(--card); }
+.file-msg { display: flex; flex-direction: column; max-width: 340px; border: 1px solid var(--bubble-in-border); border-radius: 14px; padding: 11px 13px 5px; background: var(--card); }
+.file-row { display: flex; align-items: center; gap: 12px; }
+.file-foot { display: flex; align-items: center; justify-content: flex-end; gap: 3px; margin-top: 4px; }
 .msg.mine .file-msg { background: var(--bubble-mine); border-color: transparent; }
 .file-ic { width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0; color: #fff; }
 .file-meta { min-width: 0; flex: 1; }

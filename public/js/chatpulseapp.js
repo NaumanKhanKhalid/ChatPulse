@@ -308,10 +308,16 @@
       sub = `<div class="file-sub">${esc(ext.toUpperCase())} · ${esc(f.size)}</div>`;
       right = f.url ? `<button class="file-dl" title="Download" data-dl="${esc(f.url)}" data-dlname="${esc(f.name)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` : '';
     }
+    // WhatsApp: time + ticks live INSIDE the file card, bottom-right
+    const inFoot = (!msg.uploading && !msg.uploadFailed)
+      ? `<div class="file-foot">${msg.user === me.id ? statusTick(msg) : `<span class="b-time-s">${esc(msg.t || '')}</span>`}</div>` : '';
     return `<div class="file-msg ${msg.uploadFailed ? 'failed' : ''}">
-      <div class="file-ic" style="background:${col}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14 3v5h5M7 3h8l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg></div>
-      <div class="file-meta"><div class="file-name">${esc(f.name)}</div>${sub}</div>
-      ${right}
+      <div class="file-row">
+        <div class="file-ic" style="background:${col}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14 3v5h5M7 3h8l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg></div>
+        <div class="file-meta"><div class="file-name">${esc(f.name)}</div>${sub}</div>
+        ${right}
+      </div>
+      ${inFoot}
     </div>`;
   }
   function imageAlbum(msg) {
@@ -390,12 +396,13 @@
       ? `<span class="b-foot">${mine ? statusTick(msg) : `<span class="b-time-s">${esc(msg.t || '')}</span>`}</span>` : '';
     const uploadFoot = (mine && msg.uploading) ? `<div class="b-foot-out"><span class="up-status">Uploading…</span></div>` : '';
 
-    // Append foot into b-text if text message, else show below
+    // Append foot into b-text if text message, else show below.
+    // File cards render their own footer inside the card — skip here.
     let finalBody = body;
-    if (footInner) {
+    if (footInner && !msg.file) {
       // inject into .b-text closing tag so it floats inside the bubble
       finalBody = body.replace(/(<div class="b-text"[^>]*>)([\s\S]*)(<\/div>)(?=[^<]*$)/, (_, open, content, close) => `${open}${content}${footInner}${close}`);
-      // if no b-text (voice/file/poll only), append outside
+      // if no b-text (voice/image/poll only), append outside
       if (finalBody === body) finalBody = body + `<div class="b-foot-out">${footInner}</div>`;
     }
 
