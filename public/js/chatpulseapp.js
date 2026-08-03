@@ -495,40 +495,70 @@
   function renderPanel(c) {
     const m = convoMeta(c);
     const pinned = c.messages.filter(x => (c.pinnedIds || []).includes(x.id));
+    const presLabel = !m.group ? (m.online ? `<span class="pp-pres on"><span class="pp-dot" style="background:${statusColor[m.status] || '#10b981'}"></span>${m.status === 'busy' ? 'Busy' : m.status === 'away' ? 'Away' : 'Active now'}</span>` : `<span class="pp-pres">${m.u.last ? 'Last seen ' + esc(m.u.last) : 'Offline'}</span>`) : '';
     let html = `
       <div class="panel-hero">
         ${avatar(m.av, 72)}
         <p class="panel-name">${esc(m.name)}</p>
         <p class="panel-sub">${m.group ? esc(c.desc) : '@' + m.u.username}</p>
+        ${presLabel}
         <div class="panel-quick">
           ${m.group ? '' : `${quick('phone', 'Call', 'qCall')}${quick('video', 'Video', 'qVideo')}`}
           ${quick('bell', 'Mute')}${quick('search', 'Search', 'qSearch')}
         </div>
       </div>`;
 
+    // About + info (direct chats)
+    if (!m.group) {
+      const u = m.u;
+      if (u.bio || u.statusMsg) {
+        html += section('About', '', `${u.statusMsg ? `<p class="pp-status-msg">"${esc(u.statusMsg)}"</p>` : ''}${u.bio ? `<p class="pp-bio">${esc(u.bio)}</p>` : ''}`);
+      }
+      html += section('Info', '', `
+        <div class="pp-row"><span class="pp-row-l">Username</span><span class="pp-row-v">@${esc(u.username)}</span></div>
+        ${u.joined ? `<div class="pp-row"><span class="pp-row-l">Joined</span><span class="pp-row-v">${esc(u.joined)}</span></div>` : ''}
+        ${u.role === 'admin' ? `<div class="pp-row"><span class="pp-row-l">Role</span><span class="pp-row-v"><span class="a-badge">admin</span></span></div>` : ''}
+        ${u.guest ? `<div class="pp-row"><span class="pp-row-l">Account</span><span class="pp-row-v"><span class="g-badge">guest</span></span></div>` : ''}`);
+    }
+
+    // Shared photos grid (from image messages)
+    const photos = c.messages.filter(x => x.image && !x.deleted).slice(-6).reverse();
+    if (photos.length) {
+      html += section('Shared photos', '', `<div class="pp-photos">${photos.map(p => `<a class="pp-ph" data-lightbox="${p.image.src}"><img src="${p.image.src}" alt=""></a>`).join('')}</div>`);
+    }
+
     if (pinned.length) html += section('Pinned', `<svg width=14 height=14 viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/></svg>`, pinned.map(p => `<button class="pin-item" data-jump="${p.id}"><span class="pin-au">${users[p.user].name.split(' ')[0]}</span><span class="pin-tx">${esc((p.text || '').slice(0, 48))}</span></button>`).join(''));
 
     if (m.group) html += section('Members · ' + c.members.length, '', c.members.map(id => { const u = users[id]; return `<div class="mem" data-uid="${id}" style="cursor:pointer"><span class="avwrap">${avatar(u, 32)}${u.online ? `<span class="pres sm" style="background:${statusColor[u.status]}"></span>` : ''}</span><div class="mem-info"><span class="mem-name">${esc(u.name)}${id === c.members[0] ? '<span class="role">admin</span>' : ''}</span><span class="mem-sub">${u.online ? 'online' : 'offline'}</span></div></div>`; }).join(''));
 
-    // Real shared files — derived from messages with attachments
-    const sharedFiles = c.messages.filter(m => (m.file || m.image) && !m.deleted).slice(-6).reverse();
+    // Real shared files — derived from messages with attachments (docs only; photos have their own grid)
+    const sharedFiles = c.messages.filter(m => m.file && !m.deleted).slice(-6).reverse();
     if (sharedFiles.length) {
       const colors = { pdf: '#ef4444', doc: '#3b82f6', docx: '#3b82f6', zip: '#f59e0b', fig: '#7c3aed', md: '#10b981', png: '#06b6d4', jpg: '#06b6d4', jpeg: '#06b6d4' };
       html += section('Shared files', '', sharedFiles.map(m => {
-        const name = m.file ? m.file.name : (m.image.name || 'image');
-        const size = m.file ? m.file.size : '';
+        const name = m.file.name, size = m.file.size || '';
         const ext = (name.split('.').pop() || '').toLowerCase();
         return fileItem(name, size, colors[ext] || '#8a958f');
       }).join(''));
     }
 
+    // Actions (direct chats)
+    if (!m.group) {
+      html += section('', '', `
+        <button class="pp-act" id="ppMute">${svg('bell')}<span>${c.muted ? 'Unmute notifications' : 'Mute notifications'}</span></button>
+        <button class="pp-act danger" id="ppBlock">${svg('flag')}<span>Report ${esc(m.name.split(' ')[0])}</span></button>`);
+    }
+
     $('#rightPanel .panel-scroll').innerHTML = html;
     $$('[data-jump]').forEach(b => b.addEventListener('click', () => jumpTo(b.dataset.jump)));
     $$('#rightPanel [data-uid]').forEach(b => b.addEventListener('click', () => CPOverlays.openProfile(+b.dataset.uid)));
+    $$('#rightPanel [data-lightbox]').forEach(b => b.addEventListener('click', () => openLightbox(b.dataset.lightbox)));
     if (c.type === 'direct') {
       const peer = users[c.with];
       $('#qCall')?.addEventListener('click', () => CPOverlays.openCall(peer, 'audio', true, c.id));
       $('#qVideo')?.addEventListener('click', () => CPOverlays.openCall(peer, 'video', true, c.id));
+      $('#ppMute')?.addEventListener('click', () => { c.muted = !c.muted; toast(c.muted ? 'Notifications muted' : 'Notifications unmuted'); renderPanel(c); renderList($('#search').value); });
+      $('#ppBlock')?.addEventListener('click', () => CPModals.openReport({ kind: 'user', name: peer.name }, () => toast(peer.name + ' reported')));
     }
     $('#qSearch')?.addEventListener('click', openThreadSearch);
   }
