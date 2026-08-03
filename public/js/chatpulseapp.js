@@ -342,9 +342,10 @@
     const u = users[msg.user];
     const mine = msg.user === me.id;
     const spam = isSpam(c, msg);
-    const av = grouped ? `<span class="b-gutter"></span>` : avatar(u, 38);
+    // Own messages: no avatar, no name header (WhatsApp style — time lives inside bubble)
+    const av = mine ? '' : (grouped ? `<span class="b-gutter"></span>` : avatar(u, 38));
     const spamBadge = (!mine && isSuspiciousUser(u)) ? '<span class="spam-badge" title="Flagged account">⚠ spam?</span>' : '';
-    const head = grouped ? '' : `<div class="b-head"><span class="b-name">${esc(u.name)}</span>${u.guest ? '<span class="g-badge">guest</span>' : ''}${u.role === 'admin' ? '<span class="a-badge">admin</span>' : ''}${spamBadge}<span class="b-time">${esc(msg.t)}</span></div>`;
+    const head = (grouped || mine) ? '' : `<div class="b-head"><span class="b-name">${esc(u.name)}</span>${u.guest ? '<span class="g-badge">guest</span>' : ''}${u.role === 'admin' ? '<span class="a-badge">admin</span>' : ''}${spamBadge}<span class="b-time">${esc(msg.t)}</span></div>`;
 
     let body = '';
     if (spam) {
@@ -389,7 +390,7 @@
 
     return `
     <div class="msg ${grouped ? 'grouped' : ''} ${mine ? 'mine' : ''} ${msg.status === 'failed' ? 'failed' : ''}" data-msg="${msg.id}">
-      <div class="b-av">${av}</div>
+      ${mine ? '' : `<div class="b-av">${av}</div>`}
       <div class="b-body">
         ${pin}${head}
         <div class="b-line"><div class="b-stack">${finalBody}</div>${sideBtns}</div>
