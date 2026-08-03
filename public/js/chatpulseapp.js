@@ -50,7 +50,8 @@
       const dot = (c.type === 'direct' && m.online) ? `<span class="pres" style="background:${statusColor[m.status] || '#10b981'}"></span>` : '';
       // Ticks only when the LAST message is mine (like WhatsApp)
       const lastMine = (c.last || '').startsWith('You:');
-      const badge = unread ? `<span class="badge">${c.unread}</span>` : ((c.read && lastMine) ? `<svg class="ticks read" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m3 13 3.2 3.2L13 9.5M11 13l3 3 7-7.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>` : '');
+      const atBadge = (unread && c.mention) ? `<span class="at-badge" title="You were mentioned">@</span>` : '';
+      const badge = unread ? `${atBadge}<span class="badge">${c.unread}</span>` : ((c.read && lastMine) ? `<svg class="ticks read" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m3 13 3.2 3.2L13 9.5M11 13l3 3 7-7.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>` : '');
       const typing = c.typing ? `<span class="typing-mini"><span class="d"></span><span class="d"></span><span class="d"></span></span>` : esc(c.last || '');
       const muted = c.muted ? `<svg class="muted-ico" width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 4V5L8 9H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m17 9 4 6m0-6-4 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>` : '';
       const flags = `<span class="convo-flags">${c.fav ? '<svg class="fav-star" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l2.4 5 5.4.6-4 3.7 1.1 5.3L12 16.9 7.1 18.6l1.1-5.3-4-3.7 5.4-.6L12 4Z"/></svg>' : ''}${c.pinned ? '<svg class="pin-mark" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/></svg>' : ''}</span>`;
@@ -1013,10 +1014,9 @@
 
   /* ---------- nav rail ---------- */
   function initRail() {
-    const routes = { admin: 'admin', settings: 'settings' };
+    const routes = { admin: 'admin', settings: 'settings', calls: 'calls' };
     const inline = { chat: 'chats' };
     const handleNav = (nav, btn, group) => {
-      if (nav === 'notif') { CPOverlays?.openNotifications(btn); return; }
       if (routes[nav]) { location.href = (window.CP_ROUTES && window.CP_ROUTES[nav]) ? window.CP_ROUTES[nav] : '/' + nav; return; }
       if (inline[nav]) {
         $$(group).forEach(n => n.classList.remove('active')); btn.classList.add('active');
@@ -1829,10 +1829,6 @@
 
   function boot() {
     initDark(); initRail(); initComposer(); initNet(); initThreadSearch(); initHeartbeat();
-    if (window.CP.notifUnread) {
-      const b = $('#rail [data-nav="notif"] .rb-badge');
-      if (b) { b.textContent = window.CP.notifUnread > 9 ? '9+' : window.CP.notifUnread; b.style.display = ''; }
-    }
     listSkeleton(); threadSkeleton();
     setTimeout(() => {
       initReverb();

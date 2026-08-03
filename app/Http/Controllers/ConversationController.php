@@ -57,7 +57,6 @@ class ConversationController extends Controller
             'reactionsPool'=> ['👍','🔥','🎉','❤️','😂','👀','✅','🙏'],
             'scheduled'    => $scheduled,
             'activeId'     => $activeConvId ? 'c'.$activeConvId : null,
-            'notifUnread'  => $user->notifications()->whereNull('read_at')->count(),
         ], JSON_UNESCAPED_UNICODE);
 
         $cpRoutes = json_encode([
@@ -74,6 +73,7 @@ class ConversationController extends Controller
             'startDirect'  => route('conversations.direct'),
             'createGroup'  => route('groups.store'),
             'chat'         => route('chat.index'),
+            'calls'        => route('calls.index'),
             'heartbeat'    => route('presence.heartbeat'),
             'statusUpdate' => route('status.update'),
             'pollVote'     => url('/polls/{poll}/vote'),
@@ -162,6 +162,20 @@ class ConversationController extends Controller
 
         $pinnedIds = collect($pinnedRaw)->map(fn($id) => 'db'.$id)->values()->all();
 
+        // Does an unread message mention me? (WhatsApp shows an @ badge on the row)
+        $mentioned = false;
+        if ($unread > 0) {
+            $handle = $user->username ?: strtolower(str_replace(' ', '_', $user->name));
+            $first  = strtok($user->name, ' ');
+            $since  = $participant?->last_read_at;
+            $mentioned = $c->messages()
+                ->where('user_id', '!=', $user->id)
+                ->when($since, fn($q) => $q->where('created_at', '>', $since))
+                ->where(fn($q) => $q->where('body', 'like', '%@'.$handle.'%')
+                                    ->orWhere('body', 'like', '%@'.$first.'%'))
+                ->exists();
+        }
+
         $lastText = '';
         if ($lastMsg) {
             $isMine  = $lastMsg->user_id === $user->id;
@@ -178,6 +192,7 @@ class ConversationController extends Controller
             'last'         => $lastText,
             'muted'        => (bool)($participant?->is_muted ?? false),
             'pinnedIds'    => $pinnedIds,
+            'mention'      => $mentioned,
             'firstUnreadId'=> $firstUnreadId,
             'messages'     => $messages,
         ];
