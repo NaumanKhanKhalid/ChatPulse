@@ -197,6 +197,30 @@
   function callTarget(c) { return c.type === 'direct' ? users[c.with] : { name: c.name, initials: c.initials, grad: c.grad }; }
 
   /* ---------- thread ---------- */
+  /* ---------- pinned bar (WhatsApp-style, under the header) ---------- */
+  function renderPinnedBar(c) {
+    const bar = $('#pinnedBar'); if (!bar) return;
+    const pins = (c.pinnedIds || []).map(id => c.messages.find(m => m.id === id)).filter(Boolean);
+    if (!pins.length) { bar.className = ''; bar.innerHTML = ''; return; }
+    c._pinIdx = Math.min(c._pinIdx || 0, pins.length - 1);
+    const msg = pins[c._pinIdx];
+    const u = users[msg.user];
+    const preview = msg.text || (msg.voice ? '🎤 Voice message' : msg.images ? `📷 ${msg.images.length} photos` : msg.image ? '📷 Photo' : msg.file ? '📎 ' + msg.file.name : msg.poll ? '📊 Poll' : 'Message');
+    bar.className = 'show';
+    bar.innerHTML = `
+      <span class="pb-rail">${pins.map((_, i) => `<span class="pb-seg ${i === c._pinIdx ? 'on' : ''}"></span>`).join('')}</span>
+      <svg class="pb-ico" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/><path d="M12 14v7" stroke="currentColor" stroke-width="1.8"/></svg>
+      <span class="pb-tx">
+        <span class="pb-label">Pinned${pins.length > 1 ? ` · ${c._pinIdx + 1}/${pins.length}` : ''}</span>
+        <span class="pb-msg"><b>${esc(u ? u.name.split(' ')[0] : '')}</b> ${esc(preview.slice(0, 90))}</span>
+      </span>
+      ${pins.length > 1 ? `<button class="pb-btn" id="pbNext" title="Next pinned"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` : ''}
+      <button class="pb-btn" id="pbUnpin" title="Unpin"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 14v7M4 4l16 16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>`;
+    bar.querySelector('.pb-tx').addEventListener('click', () => jumpTo(msg.id));
+    $('#pbNext')?.addEventListener('click', e => { e.stopPropagation(); c._pinIdx = (c._pinIdx + 1) % pins.length; renderPinnedBar(c); });
+    $('#pbUnpin')?.addEventListener('click', e => { e.stopPropagation(); togglePin(c, msg.id); });
+  }
+
   function renderThread(c) {
     const t = $('#thread');
     if (!c.messages.length) {
@@ -279,8 +303,9 @@
       right = f.url ? `<button class="file-dl" title="Download" data-dl="${esc(f.url)}" data-dlname="${esc(f.name)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` : '';
     }
     // WhatsApp: time + ticks live INSIDE the file card, bottom-right
+    const pinIco = msg.pinned ? `<svg class="b-pin-ico" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/><path d="M12 14v7" stroke="currentColor" stroke-width="1.8"/></svg>` : '';
     const inFoot = (!msg.uploading && !msg.uploadFailed)
-      ? `<div class="file-foot">${msg.user === me.id ? statusTick(msg) : `<span class="b-time-s">${esc(msg.t || '')}</span>`}</div>` : '';
+      ? `<div class="file-foot">${pinIco}${msg.user === me.id ? statusTick(msg) : `<span class="b-time-s">${esc(msg.t || '')}</span>`}</div>` : '';
     return `<div class="file-msg ${msg.uploadFailed ? 'failed' : ''}">
       <div class="file-row">
         <div class="file-ic" style="background:${col}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14 3v5h5M7 3h8l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg></div>
@@ -359,11 +384,12 @@
     }
 
     const reax = renderReax(msg);
-    const pin = msg.pinned ? `<span class="pin-flag"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/><path d="M12 14v7" stroke="currentColor" stroke-width="1.6"/></svg>Pinned</span>` : '';
+    const pin = ''; // pinned state now shows as a small icon in the footer + top bar
 
     // Inject time (+ ticks for mine) inside EVERY bubble — WhatsApp style
+    const pinIco = msg.pinned ? `<svg class="b-pin-ico" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/><path d="M12 14v7" stroke="currentColor" stroke-width="1.8"/></svg>` : '';
     const footInner = (!msg.deleted && !msg.uploading && !msg.uploadFailed)
-      ? `<span class="b-foot">${mine ? statusTick(msg) : `<span class="b-time-s">${esc(msg.t || '')}</span>`}</span>` : '';
+      ? `<span class="b-foot">${pinIco}${mine ? statusTick(msg) : `<span class="b-time-s">${esc(msg.t || '')}</span>`}</span>` : '';
     const uploadFoot = (mine && msg.uploading) ? `<div class="b-foot-out"><span class="up-status">Uploading…</span></div>` : '';
 
     // Append foot into b-text if text message, else show below.
@@ -753,7 +779,7 @@
       const url = (R.pinAdd || '/conversations/{conv}/pins').replace('{conv}', dbConv);
       apiPost(url, { message_id: +dbMsg }).catch(() => {});
     }
-    renderThread(c); renderPanel(c);
+    renderThread(c); renderPinnedBar(c); renderPanel(c);
   }
 
   let replyTo = null;
@@ -877,7 +903,7 @@
     // mark as read on backend
     markConvRead(c);
     $('.composer-wrap').style.display = '';
-    renderList($('#search').value); renderHeader(c); renderThread(c); renderPanel(c);
+    renderList($('#search').value); renderHeader(c); renderThread(c); renderPinnedBar(c); renderPanel(c);
     document.body.classList.add('mobile-chat');
   }
   function startDraft() {
@@ -1739,14 +1765,14 @@
         if (!c.pinnedIds.includes(mid)) c.pinnedIds.push(mid);
         const m = c.messages.find(x => x.id === mid);
         if (m) m.pinned = true;
-        if (c.id === activeId) { renderThread(c); renderPanel(c); }
+        if (c.id === activeId) { renderThread(c); renderPinnedBar(c); renderPanel(c); }
       })
       .listen('MessageUnpinned', e => {
         const mid = 'db' + e.message_id;
         c.pinnedIds = (c.pinnedIds || []).filter(x => x !== mid);
         const m = c.messages.find(x => x.id === mid);
         if (m) m.pinned = false;
-        if (c.id === activeId) { renderThread(c); renderPanel(c); }
+        if (c.id === activeId) { renderThread(c); renderPinnedBar(c); renderPanel(c); }
       })
       .listenForWhisper('message-delivered', e => {
         // message_id comes as numeric string, our ids are prefixed 'db'
@@ -1799,7 +1825,7 @@
       conversations.forEach(c => subscribeConv(c));
       const c = conversations.find(x => x.id === activeId);
       renderList();
-      if (c) { renderHeader(c); renderThread(c); renderPanel(c); }
+      if (c) { renderHeader(c); renderThread(c); renderPinnedBar(c); renderPanel(c); }
       else if (conversations.length) { selectConvo(conversations[0].id); }
       else { showWelcome(); }
     }, 750);
