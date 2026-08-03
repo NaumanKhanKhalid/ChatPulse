@@ -133,12 +133,17 @@ class ConversationController extends Controller
         ];
         $grad = $gradPool[$c->id % count($gradPool)];
 
+        // Read persistence: my message is 'read' when ALL other participants
+        // have last_read_at >= message time (min of their read times)
+        $otherReads = $c->participants()->where('user_id', '!=', $user->id)->pluck('last_read_at');
+        $othersReadAt = ($otherReads->count() && !$otherReads->contains(null)) ? $otherReads->min() : null;
+
         $messages = $c->messages()
             ->with(['user','reactions','parent.user','attachments'])
             ->orderBy('created_at','asc')
             ->take(60)
             ->get()
-            ->map(fn($m) => $this->msgToCP($m, $user))
+            ->map(fn($m) => $this->msgToCP($m, $user, $othersReadAt))
             ->values()->all();
 
         $participant   = $c->participants()->where('user_id', $user->id)->first();
@@ -189,18 +194,24 @@ class ConversationController extends Controller
         return $base;
     }
 
-    private function msgToCP(Message $m, User $user): array
+    private function msgToCP(Message $m, User $user, $othersReadAt = null): array
     {
         $reactions = $m->reactions->groupBy('emoji')
             ->map(fn($group) => $group->pluck('user_id')->values()->all())
             ->all();
+
+        $mine = $m->user_id === $user->id;
+        $status = null;
+        if ($mine) {
+            $status = ($othersReadAt && $m->created_at->lte($othersReadAt)) ? 'read' : 'sent';
+        }
 
         $msg = [
             'id'     => 'db'.$m->id,
             'user'   => $m->user_id,
             't'      => $m->created_at->format('g:i A'),
             'text'   => $m->body ?? '',
-            'status' => $m->user_id === $user->id ? 'sent' : null,
+            'status' => $status,
         ];
 
         if (!empty($reactions))     $msg['reactions'] = $reactions;
