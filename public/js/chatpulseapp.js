@@ -403,7 +403,7 @@
     const sideBtns = (!msg.deleted && !spam) ? `<div class="msg-side"><button class="ms-btn" data-sidereact="${msg.id}" title="React">${svg('react')}</button><button class="ms-btn" data-msgmenu="${msg.id}" title="More options"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>` : '';
 
     return `
-    <div class="msg ${grouped ? 'grouped' : ''} ${mine ? 'mine' : ''} ${msg.status === 'failed' ? 'failed' : ''}" data-msg="${msg.id}">
+    <div class="msg ${grouped ? 'grouped' : ''} ${mine ? 'mine' : ''} ${reax ? 'has-reax' : ''} ${msg.status === 'failed' ? 'failed' : ''}" data-msg="${msg.id}">
       ${mine ? '' : `<div class="b-av">${av}</div>`}
       <div class="b-body">
         ${pin}${head}
@@ -502,7 +502,8 @@
 
   function renderReax(msg) {
     if (!msg.reactions || !Object.keys(msg.reactions).length) return '';
-    return `<div class="reax">${Object.entries(msg.reactions).map(([emo, ids]) => `<button class="reax-pill ${ids.includes(me.id) ? 'mine' : ''}" data-react="${msg.id}" data-emo="${emo}">${emo}<span>${ids.length}</span></button>`).join('')}<button class="reax-add" data-addreact="${msg.id}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M9 13a3 3 0 0 0 6 0M9 9h.01M15 9h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="8.3" stroke="currentColor" stroke-width="1.6"/></svg></button></div>`;
+    // WhatsApp style: reaction chips overlap the bubble's bottom edge
+    return `<div class="reax">${Object.entries(msg.reactions).map(([emo, ids]) => `<button class="reax-pill ${ids.includes(me.id) ? 'mine' : ''}" data-react="${msg.id}" data-emo="${emo}">${emo}<span>${ids.length}</span></button>`).join('')}</div>`;
   }
 
   /* ---------- right panel ---------- */

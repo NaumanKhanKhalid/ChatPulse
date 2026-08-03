@@ -171,6 +171,9 @@ html.dark .msg:hover { background: rgba(255,255,255,.03); }
 .msg.mine .reax { justify-content: flex-end; }
 /* Grouped: hide avatar space on last-in-group */
 .msg.grouped .b-av { visibility: hidden; }
+/* Extra bottom room in the bubble when a reaction overlaps it */
+.msg.has-reax .b-text, .msg.has-reax .file-msg { padding-bottom: 14px; }
+.msg.has-reax .img-msg, .msg.has-reax .img-album { margin-bottom: 4px; }
 
 .reply-quote { display: flex; gap: 0; margin-bottom: 6px; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,.06); cursor: pointer; }
 html.dark .reply-quote { background: rgba(255,255,255,.06); }
@@ -180,13 +183,13 @@ html.dark .reply-quote { background: rgba(255,255,255,.06); }
 .reply-name { font-size: 11.5px; font-weight: 700; color: var(--primary); display: block; margin-bottom: 2px; }
 .reply-text { font-size: 12.5px; color: var(--text2); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; line-height: 1.4; }
 
-.reax { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
-.reax-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; padding: 2px 8px; border-radius: 99px; background: var(--input); border: 1px solid transparent; cursor: pointer; }
-.reax-pill span { font-size: 11.5px; font-weight: 700; color: var(--text2); }
+/* Reactions overlap the bubble edge (WhatsApp style) — no extra row height */
+.reax { display: flex; gap: 3px; flex-wrap: wrap; margin-top: -11px; margin-bottom: 2px; position: relative; z-index: 2; padding-left: 10px; }
+.msg.mine .reax { padding-left: 0; padding-right: 10px; }
+.reax-pill { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; line-height: 1; padding: 3px 7px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 1px 4px rgba(0,0,0,.14); cursor: pointer; }
+.reax-pill span { font-size: 10.5px; font-weight: 700; color: var(--text2); }
 .reax-pill.mine { background: var(--primary-light); border-color: var(--primary); }
-html.dark .reax-pill.mine { background: rgba(16,185,129,.16); }
-.reax-add { width: 26px; height: 24px; border-radius: 99px; display: grid; place-items: center; color: var(--text3); background: var(--input); cursor: pointer; }
-.reax-add:hover { color: var(--text); }
+html.dark .reax-pill.mine { background: rgba(16,185,129,.22); }
 
 /* WhatsApp-style side controls: react + arrow next to bubble, visible on hover */
 .b-line { display: flex; align-items: center; gap: 6px; width: 100%; }
