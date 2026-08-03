@@ -1099,6 +1099,7 @@
       _mediaRecorder.start(100);
       recSec = 0; recStart = Date.now();
       $('#composer-field').style.display = 'none';
+      $('#sendBtn').style.display = 'none';
       $('#recBar').classList.add('show');
       $('#recTime').textContent = '0:00';
       recTimer = setInterval(() => {
@@ -1112,6 +1113,7 @@
     clearInterval(recTimer); recTimer = null;
     $('#recBar').classList.remove('show');
     $('#composer-field').style.display = '';
+    updateSendMic(); // restore send/mic visibility
     if (!_mediaRecorder) { if (!sendIt) toast('Recording discarded'); return; }
     const secs = Math.max(1, Math.round((Date.now() - recStart) / 1000));
     _mediaRecorder.onstop = () => {
