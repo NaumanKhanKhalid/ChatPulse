@@ -249,7 +249,7 @@ html.dark .rb-name { color: #6ee7b7; }
 #rightPanel { width: 300px; flex-shrink: 0; border-left: 1px solid var(--line); background: var(--bg); display: flex; flex-direction: column; transition: width .2s, opacity .2s; overflow: hidden; }
 #rightPanel.collapsed { width: 0; opacity: 0; border: none; }
 .panel-scroll { flex: 1; overflow-y: auto; }
-.panel-hero { padding: 26px 20px 18px; text-align: center; border-bottom: 1px solid var(--line); }
+.panel-hero { padding: 26px 20px 18px; text-align: center; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; }
 .panel-name { font-size: 17px; font-weight: 800; margin: 12px 0 2px; color: var(--text); }
 .panel-sub { font-size: 12.5px; color: var(--text3); margin: 0; }
 .panel-quick { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
