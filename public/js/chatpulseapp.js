@@ -1699,7 +1699,11 @@
           if (c._typingTimers?.[msg.user_id]) { clearTimeout(c._typingTimers[msg.user_id]); delete c._typingTimers[msg.user_id]; }
           c.typing = Object.keys(c._typers).length > 0;
         }
-        if (c.id !== activeId) c.unread = (c.unread || 0) + 1;
+        const reading = c.id === activeId && !document.hidden;
+        if (!reading) {
+          c.unread = (c.unread || 0) + 1;
+          if (!c.firstUnreadId) c.firstUnreadId = cp.id; // mark where new messages start
+        }
         // Only mark read if this conversation is active AND the tab is visible
         if (c.id === activeId) {
           renderThread(c);

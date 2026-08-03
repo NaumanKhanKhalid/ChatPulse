@@ -281,8 +281,8 @@ html.dark .rb-name { color: #6ee7b7; }
 
 /* unread divider */
 .unread-div { display: flex; align-items: center; gap: 12px; margin: 16px 10px 4px; }
-.unread-div::before, .unread-div::after { content: ""; height: 1px; background: var(--busy); opacity: .35; flex: 1; }
-.unread-div span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--busy); background: var(--bg); padding: 2px 10px; border-radius: 99px; border: 1px solid var(--busy); }
+.unread-div::before, .unread-div::after { content: ""; height: 1px; background: var(--primary); opacity: .3; flex: 1; }
+.unread-div span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--primary); background: var(--bg); padding: 2px 10px; border-radius: 99px; border: 1px solid var(--primary); }
 
 /* empty state */
 .estate { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; padding: 40px 28px; color: var(--text3); }
