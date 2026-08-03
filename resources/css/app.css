@@ -859,7 +859,8 @@ html.dark .sset-badge.red { background:rgba(239,68,68,.18); color:#fca5a5; }
 
 /* Sidebar */
 .adm-side { width: 236px; flex-shrink: 0; background: var(--rail); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
-.adm-logo { display: flex; align-items: center; gap: 10px; padding: 18px 16px; border-bottom: 1px solid rgba(255,255,255,.07); text-decoration: none; }
+.adm-brand { display: flex; align-items: center; gap: 8px; padding: 14px 12px 14px 16px; border-bottom: 1px solid rgba(255,255,255,.07); }
+.adm-logo { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; text-decoration: none; }
 .adm-logo-ic { width: 34px; height: 34px; border-radius: 11px; background: var(--primary); display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 6px 16px -6px rgba(16,185,129,.7); }
 .adm-logo-tx { font-size: 14.5px; font-weight: 800; color: #fff; }
 .adm-logo-tx em { font-style: normal; color: var(--primary); }
@@ -1104,17 +1105,18 @@ html.dark .adm-badge.red { color: #fca5a5; }
 .at-badge { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 11px; font-weight: 800; margin-right: 4px; }
 
 /* ===== Admin: collapsible sidebar ===== */
-.adm-collapse { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; color: rgba(255,255,255,.55); margin: 12px 0 0 14px; }
+.adm-collapse { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: rgba(255,255,255,.5); flex-shrink: 0; transition: background .12s, color .12s; }
 .adm-collapse:hover { background: rgba(255,255,255,.08); color: #fff; }
 html.adm-collapsed .adm-side { width: 66px; }
 html.adm-collapsed .adm-logo-tx,
 html.adm-collapsed .adm-nav-lbl,
 html.adm-collapsed .adm-nav-item span,
 html.adm-collapsed .adm-back span { display: none; }
-html.adm-collapsed .adm-logo { justify-content: center; padding: 18px 0; }
+html.adm-collapsed .adm-brand { flex-direction: column; gap: 10px; padding: 14px 0; }
+html.adm-collapsed .adm-logo { justify-content: center; flex: none; }
 html.adm-collapsed .adm-nav-item,
 html.adm-collapsed .adm-back { justify-content: center; padding: 10px 0; }
-html.adm-collapsed .adm-collapse { margin-left: 17px; }
+
 html.adm-collapsed .adm-nav-badge { position: absolute; top: 3px; right: 10px; }
 .adm-side { transition: width .18s; }
 .adm-nav-item { position: relative; }

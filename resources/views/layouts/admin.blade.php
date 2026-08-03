@@ -21,15 +21,17 @@
 <div class="adm-app">
     {{-- Sidebar --}}
     <aside class="adm-side">
-        <button class="adm-collapse" id="admCollapse" title="Toggle sidebar">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
-        </button>
-        <a href="{{ route('chat.index') }}" class="adm-logo">
-            <span class="adm-logo-ic">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 9.5C5 6.46 7.46 4 10.5 4h3C16.54 4 19 6.46 19 9.5S16.54 15 13.5 15H9l-3.2 2.9c-.5.46-1.3.1-1.3-.58V9.5Z" fill="#fff"/><circle cx="9.5" cy="9.5" r="1.2" fill="#10b981"/><circle cx="13.5" cy="9.5" r="1.2" fill="#10b981"/></svg>
-            </span>
-            <span class="adm-logo-tx">ChatPulse <em>Admin</em></span>
-        </a>
+        <div class="adm-brand">
+            <a href="{{ route('chat.index') }}" class="adm-logo" title="ChatPulse Admin">
+                <span class="adm-logo-ic">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 9.5C5 6.46 7.46 4 10.5 4h3C16.54 4 19 6.46 19 9.5S16.54 15 13.5 15H9l-3.2 2.9c-.5.46-1.3.1-1.3-.58V9.5Z" fill="#fff"/><circle cx="9.5" cy="9.5" r="1.2" fill="#10b981"/><circle cx="13.5" cy="9.5" r="1.2" fill="#10b981"/></svg>
+                </span>
+                <span class="adm-logo-tx">ChatPulse <em>Admin</em></span>
+            </a>
+            <button class="adm-collapse" id="admCollapse" title="Toggle sidebar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+            </button>
+        </div>
 
         <nav class="adm-nav">
             <span class="adm-nav-lbl">Overview</span>
