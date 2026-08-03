@@ -1016,6 +1016,7 @@
     const routes = { admin: 'admin', settings: 'settings' };
     const inline = { chat: 'chats' };
     const handleNav = (nav, btn, group) => {
+      if (nav === 'notif') { CPOverlays?.openNotifications(btn); return; }
       if (routes[nav]) { location.href = (window.CP_ROUTES && window.CP_ROUTES[nav]) ? window.CP_ROUTES[nav] : '/' + nav; return; }
       if (inline[nav]) {
         $$(group).forEach(n => n.classList.remove('active')); btn.classList.add('active');
@@ -1828,6 +1829,10 @@
 
   function boot() {
     initDark(); initRail(); initComposer(); initNet(); initThreadSearch(); initHeartbeat();
+    if (window.CP.notifUnread) {
+      const b = $('#rail [data-nav="notif"] .rb-badge');
+      if (b) { b.textContent = window.CP.notifUnread > 9 ? '9+' : window.CP.notifUnread; b.style.display = ''; }
+    }
     listSkeleton(); threadSkeleton();
     setTimeout(() => {
       initReverb();
