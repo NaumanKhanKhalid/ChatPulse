@@ -189,8 +189,12 @@ html.dark .reply-quote { background: rgba(255,255,255,.06); }
 .reax-pill { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; line-height: 1; padding: 3px 7px; border-radius: 99px; background: var(--bubble-in); border: 2px solid var(--bg); cursor: pointer; transition: transform .1s; }
 .reax-pill:hover { transform: scale(1.08); }
 .reax-pill span { font-size: 10.5px; font-weight: 700; color: var(--text3); }
-.reax-pill.mine { background: var(--primary-light); border-color: var(--primary); }
-html.dark .reax-pill.mine { background: rgba(16,185,129,.22); }
+/* own reaction: subtle tint only — the ring must stay chat-background
+   coloured so the pill reads as cut out of the bubble */
+.reax-pill.mine { background: var(--primary-light); }
+html.dark .reax-pill.mine { background: rgba(16,185,129,.18); }
+.reax-pill.mine span { color: var(--primary-dark); }
+html.dark .reax-pill.mine span { color: #6ee7b7; }
 
 /* WhatsApp-style side controls: react + arrow next to bubble, visible on hover */
 .b-line { display: flex; align-items: center; gap: 6px; width: 100%; }
