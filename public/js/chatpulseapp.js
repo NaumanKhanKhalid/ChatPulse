@@ -1562,16 +1562,15 @@
       .here(members => {
         members.forEach(m => { if (users[m.id]) users[m.id].online = true; });
         renderList($('#search').value);
+        refreshActiveViews(); // header + panel of open conversation
       })
       .joining(m => {
         if (users[m.id]) { users[m.id].online = true; renderList($('#search').value); }
-        const c = activeId && conversations.find(x => x.id === activeId);
-        if (c && (c.with === m.id || (c.members && c.members.includes(m.id)))) renderHeader(c);
+        refreshActiveViews(m.id);
       })
       .leaving(m => {
         if (users[m.id]) { users[m.id].online = false; users[m.id].last = 'just now'; renderList($('#search').value); }
-        const c = activeId && conversations.find(x => x.id === activeId);
-        if (c && (c.with === m.id || (c.members && c.members.includes(m.id)))) renderHeader(c);
+        refreshActiveViews(m.id);
       })
       .listen('UserPresenceUpdated', e => {
         const u = users[e.user_id];
@@ -1579,8 +1578,7 @@
         u.online = e.is_online;
         if (!e.is_online) u.last = 'just now';
         renderList($('#search').value);
-        const c = activeId && conversations.find(x => x.id === activeId);
-        if (c && (c.with === e.user_id || (c.members && c.members.includes(e.user_id)))) renderHeader(c);
+        refreshActiveViews(e.user_id);
       })
       .error(() => {});
 
@@ -1699,6 +1697,16 @@
           else renderList($('#search').value);
         }
       });
+  }
+
+  /** Re-render header + right panel of the open conversation when presence changes.
+      If uid given, only refresh when that user is part of the active conversation. */
+  function refreshActiveViews(uid) {
+    const c = activeId && conversations.find(x => x.id === activeId);
+    if (!c) return;
+    if (uid !== undefined && !(c.with === uid || (c.members && c.members.includes(uid)))) return;
+    renderHeader(c);
+    renderPanel(c);
   }
 
   function markConvRead(c) {
