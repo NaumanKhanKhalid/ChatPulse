@@ -61,7 +61,7 @@ class CallController extends Controller
 
     public function answer(Call $call): JsonResponse
     {
-        $call->update(['status' => 'answered']);
+        $call->update(['status' => 'answered', 'answered_at' => now()]);
         CallParticipant::firstOrCreate(
             ['call_id'=>$call->id,'user_id'=>auth()->id()],
             ['joined_at'=>now()]
@@ -79,8 +79,9 @@ class CallController extends Controller
 
     public function end(Call $call): JsonResponse
     {
-        $started = $call->started_at;
-        $duration = $started ? (int) $started->diffInSeconds(now()) : 0;
+        // Duration counts from when the call was answered, not from ringing
+        $from = $call->answered_at;
+        $duration = $from ? (int) $from->diffInSeconds(now()) : 0;
         $call->update(['ended_at' => now(), 'duration_seconds' => $duration]);
 
         CallParticipant::where('call_id', $call->id)

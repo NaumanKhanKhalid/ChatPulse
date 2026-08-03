@@ -1840,6 +1840,15 @@
       else { showWelcome(); }
     }, 750);
     setTimeout(() => { if (window.CPAccount) CPAccount.startOnboarding(/[?&]onboarding=1/.test(location.search)); }, 950);
+    // Call back from the call log: /chat/{id}?call=audio|video
+    const callParam = (location.search.match(/[?&]call=(audio|video)/) || [])[1];
+    if (callParam) {
+      history.replaceState({}, '', location.pathname);
+      setTimeout(() => {
+        const c = conversations.find(x => x.id === activeId);
+        if (c && c.type === 'direct' && users[c.with]) CPOverlays?.openCall(users[c.with], callParam, false, c.id);
+      }, 1100);
+    }
   }
   document.addEventListener('DOMContentLoaded', boot);
 })();
