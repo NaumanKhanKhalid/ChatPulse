@@ -214,11 +214,16 @@ class ConversationController extends Controller
         }
 
         if ($m->attachments->count()) {
-            $att = $m->attachments->first();
-            if ($att && str_starts_with($att->file_type ?? '', 'image/')) {
-                $msg['image'] = ['src' => $att->url, 'name' => $att->original_name];
-            } elseif ($att) {
-                $msg['file']  = ['name' => $att->original_name, 'size' => $att->formatted_size ?? '?'];
+            $imgs  = $m->attachments->filter(fn($a) => str_starts_with($a->file_type ?? '', 'image/'))->values();
+            $files = $m->attachments->reject(fn($a) => str_starts_with($a->file_type ?? '', 'image/'))->values();
+            if ($imgs->count() > 1) {
+                // WhatsApp-style album — all images grouped in one bubble
+                $msg['images'] = $imgs->map(fn($a) => ['src' => $a->url, 'name' => $a->original_name])->all();
+            } elseif ($imgs->count() === 1) {
+                $msg['image'] = ['src' => $imgs[0]->url, 'name' => $imgs[0]->original_name];
+            }
+            if ($files->count()) {
+                $msg['file'] = ['name' => $files[0]->original_name, 'size' => $files[0]->formatted_size ?? '?'];
             }
         }
 
