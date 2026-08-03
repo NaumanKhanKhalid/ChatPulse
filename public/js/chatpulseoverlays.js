@@ -305,7 +305,9 @@ window.CPOverlays = (function () {
     }
 
     function setupWebRTC(isOffering) {
-      pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      // ICE servers come from config/webrtc.php — STUN always, TURN when configured
+      const ice = (window.CP_ROUTES && window.CP_ROUTES.iceServers) || [{ urls: 'stun:stun.l.google.com:19302' }];
+      pc = new RTCPeerConnection({ iceServers: ice });
       pc.onicecandidate = e => {
         if (e.candidate && callId) {
           const url = (R.callSignal || '/calls/{call}/signal').replace('{call}', callId);
