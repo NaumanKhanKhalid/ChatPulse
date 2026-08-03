@@ -16,6 +16,11 @@ try { $railUnread = $railUser->conversations->sum(fn($c) => $c->getUnreadCountFo
         @if($railUnread > 0)<span class="rb-badge">{{ $railUnread > 9 ? '9+' : $railUnread }}</span>@endif
     </button>
 
+    <button class="rail-btn" data-nav="notif" title="Notifications">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.8"/></svg>
+        <span class="rb-badge" style="display:none"></span>
+    </button>
+
     <div class="rail-div"></div>
 
     @if($railUser->isAdmin())

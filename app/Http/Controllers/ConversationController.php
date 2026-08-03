@@ -57,6 +57,7 @@ class ConversationController extends Controller
             'reactionsPool'=> ['👍','🔥','🎉','❤️','😂','👀','✅','🙏'],
             'scheduled'    => $scheduled,
             'activeId'     => $activeConvId ? 'c'.$activeConvId : null,
+            'notifUnread'  => $user->notifications()->whereNull('read_at')->count(),
         ], JSON_UNESCAPED_UNICODE);
 
         $cpRoutes = json_encode([

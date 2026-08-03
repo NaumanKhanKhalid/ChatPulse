@@ -49,7 +49,8 @@ class MessageService
             if (!$deferBroadcast) {
                 try { broadcast(new MessageSent($message))->toOthers(); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
             }
-            NotifyParticipantsJob::dispatch($message);
+            // Run inline (a few DB inserts) so notifications work without a queue worker
+            try { NotifyParticipantsJob::dispatchSync($message); } catch (\Throwable) {}
 
             // Check for URLs and fetch link previews
             if ($body && preg_match_all('/https?:\/\/[^\s]+/', $body, $matches)) {
