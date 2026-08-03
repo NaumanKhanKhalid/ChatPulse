@@ -1015,11 +1015,13 @@ html.dark .adm-badge.red { color: #fca5a5; }
 @media (max-width: 1440px) {
   body { zoom: 0.9; }
   .app, .adm-side { height: calc(100vh / 0.9); }
+  .app, .adm-app { width: calc(100vw / 0.9); }
   .adm-app { min-height: calc(100vh / 0.9); }
 }
 @media (max-width: 1200px) {
   body { zoom: 0.85; }
   .app, .adm-side { height: calc(100vh / 0.85); }
+  .app, .adm-app { width: calc(100vw / 0.85); }
   .adm-app { min-height: calc(100vh / 0.85); }
 }
 
