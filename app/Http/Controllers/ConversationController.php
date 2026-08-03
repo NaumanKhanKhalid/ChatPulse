@@ -216,6 +216,7 @@ class ConversationController extends Controller
             'status' => $status,
         ];
 
+        if ($m->type === 'system')  $msg['system'] = true;
         if (in_array($m->id, $pinnedIds)) $msg['pinned'] = true;
         if (!empty($reactions))     $msg['reactions'] = $reactions;
         if ($m->is_edited)          $msg['edited']    = true;
