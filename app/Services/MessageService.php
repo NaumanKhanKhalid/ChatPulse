@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 
 class MessageService
 {
-    public function send(Conversation $conversation, User $user, array $data): Message
+    public function send(Conversation $conversation, User $user, array $data, bool $deferBroadcast = false): Message
     {
         $body = isset($data['body']) ? strip_tags($data['body']) : null;
 
@@ -44,7 +44,11 @@ class MessageService
             // in real-time without needing the queue worker.
             // toOthers() excludes the sender's socket so they don't see a duplicate
             // (they already get the message from the HTTP response).
-            try { broadcast(new MessageSent($message))->toOthers(); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
+            // When attachments are uploaded with the message, the controller
+            // broadcasts AFTER storing them so receivers get the full payload.
+            if (!$deferBroadcast) {
+                try { broadcast(new MessageSent($message))->toOthers(); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
+            }
             NotifyParticipantsJob::dispatch($message);
 
             // Check for URLs and fetch link previews
