@@ -89,11 +89,30 @@ class ConversationController extends Controller
             'notifRead'    => url('/notifications/{notif}/read'),
             'notifReadAll' => route('notifications.read-all'),
             'csrf'         => csrf_token(),
+            'iceServers'   => $this->iceServers(),
         ]);
 
         $activeConvIdStr = $activeConvId ? 'c'.$activeConvId : null;
 
         return view('chat.index', compact('cpData', 'cpRoutes', 'activeConvIdStr'));
+    }
+
+    /** ICE servers for WebRTC — STUN always, TURN only when configured. */
+    private function iceServers(): array
+    {
+        $servers = [];
+        if ($stun = config('webrtc.stun_urls')) {
+            $servers[] = ['urls' => $stun];
+        }
+        $turn = config('webrtc.turn_urls');
+        if (!empty($turn) && config('webrtc.turn_username')) {
+            $servers[] = [
+                'urls'       => $turn,
+                'username'   => config('webrtc.turn_username'),
+                'credential' => config('webrtc.turn_credential'),
+            ];
+        }
+        return $servers;
     }
 
     private function userToCP(User $u): array
