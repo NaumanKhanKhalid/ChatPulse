@@ -3,12 +3,12 @@ namespace App\Events;
 
 use App\Models\MessagePin;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Broadcasting\InteractsWithSockets;
 
-class MessagePinned implements ShouldBroadcast
+class MessagePinned implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

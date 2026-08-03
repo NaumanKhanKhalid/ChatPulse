@@ -6,7 +6,7 @@
   const esc = (s) => (s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   let activeId = (window.CP && window.CP.activeId && conversations.find(c => c.id === window.CP.activeId)) ? window.CP.activeId : conversations[0]?.id;
-  let listView = 'chats'; // chats | people | saved | scheduled
+  let listView = 'chats'; // chats | people | scheduled
 
   // Until WebSocket (Reverb) is wired, only the current logged-in user is reliably online.
   // Overwrite stale is_online flags from page-load snapshot.
@@ -27,7 +27,6 @@
   /* ---------- conversation list ---------- */
   function renderList(filter) {
     if (listView === 'people') return renderPeople(filter);
-    if (listView === 'saved') return renderSaved();
     if (listView === 'scheduled') return renderScheduled();
     const f = (filter || '').toLowerCase();
     const wrap = $('#convoList');
@@ -72,7 +71,7 @@
     $$('[data-cmenu]', wrap).forEach(b => b.addEventListener('click', e => { e.stopPropagation(); convoMenu(conversations.find(x => x.id === b.dataset.cmenu), b); }));
   }
 
-  /* ---------- list views: People / Saved / Scheduled ---------- */
+  /* ---------- list views: People / Scheduled ---------- */
   function setFilterPill(name) { $$('.filters .filter').forEach(x => x.classList.toggle('on', x.textContent.trim() === name)); }
   function openView(v) {
     listView = v;
@@ -108,36 +107,6 @@
         <span class="person-msg" title="Message"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 6.5C4 5.12 5.12 4 6.5 4h11C18.88 4 20 5.12 20 6.5v7c0 1.38-1.12 2.5-2.5 2.5H10l-3.6 3a1 1 0 0 1-1.65-.77V6.5Z" stroke="currentColor" stroke-width="1.7"/></svg></span>
       </div>`).join('');
     $$('[data-person]', wrap).forEach(b => b.addEventListener('click', () => { backToChats(); startDirect(+b.dataset.person); }));
-  }
-
-  function renderSaved() {
-    const wrap = $('#convoList');
-    const items = [];
-    conversations.forEach(c => (c.messages || []).forEach(m => { if (m.bookmarked && !m.deleted) items.push({ c, m }); }));
-    let html = viewHeader('Saved messages', items.length + (items.length === 1 ? ' saved message' : ' saved messages'));
-    if (!items.length) html += `<div class="list-empty"><div class="estate-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4h10v16l-5-3.5L7 20V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div><h4>No saved messages</h4><p>Hover any message and tap the bookmark icon to save it here.</p></div>`;
-    else html += `<div class="saved-list">${items.map(({ c, m }) => {
-      const u = users[m.user]; const meta = convoMeta(c);
-      const body = m.text || (m.voice ? '🎤 Voice message' : m.image ? '📷 Photo' : m.file ? '📎 ' + m.file.name : 'Message');
-      return `<button class="saved-item" data-saved="${c.id}|${m.id}">
-        <span class="saved-top">${avatar(u, 26)}<span class="saved-by">${esc(u.name)}</span><span class="saved-in">in ${esc(meta.name)}</span><span class="saved-time">${esc(m.t)}</span></span>
-        <span class="saved-text">${esc(body.slice(0, 120))}</span>
-        <span class="saved-unbm" data-unbm="${c.id}|${m.id}" title="Remove"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h10v16l-5-3.5L7 20V4Z"/></svg></span>
-      </button>`;
-    }).join('')}</div>`;
-    wrap.innerHTML = html;
-    bindViewBack();
-    $$('[data-saved]', wrap).forEach(b => b.addEventListener('click', e => {
-      if (e.target.closest('[data-unbm]')) return;
-      const [cid, mid] = b.dataset.saved.split('|'); backToChats(); selectConvo(cid); setTimeout(() => jumpTo(mid), 60);
-    }));
-    $$('[data-unbm]', wrap).forEach(b => b.addEventListener('click', e => {
-      e.stopPropagation();
-      const [cid, mid] = b.dataset.unbm.split('|');
-      const c = conversations.find(x => x.id === cid); const m = c.messages.find(x => x.id === mid);
-      if (m) m.bookmarked = false;
-      renderSaved(); toast('Removed from saved');
-    }));
   }
 
   function renderScheduled() {
@@ -623,7 +592,6 @@
       reply: '<path d="M9 7 4 12l5 5M4 12h10a6 6 0 0 1 6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
       edit: '<path d="M5 19h4L19 9l-4-4L5 15v4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
       pin: '<path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 14v7" stroke="currentColor" stroke-width="1.6"/>',
-      bookmark: '<path d="M7 4h10v16l-5-3.5L7 20V4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
       more: '<circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/>',
       forward: '<path d="M13 7l5 5-5 5M18 12H7a3 3 0 0 0-3 3v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
       copy: '<rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="1.7"/>',
@@ -1255,7 +1223,6 @@
       { ic: 'forward', label: 'Forward', fn: () => forwardMessage(c, msgId) },
       { ic: 'copy', label: 'Copy text', fn: () => { navigator.clipboard?.writeText(msg.text || ''); toast('Copied to clipboard'); } },
       { ic: msg.pinned ? 'unpin' : 'pin', label: msg.pinned ? 'Unpin' : 'Pin', fn: () => togglePin(c, msgId) },
-      { ic: 'bookmark', label: msg.bookmarked ? 'Unsave' : 'Save message', fn: () => toggleBookmark(c, msgId) },
     ];
     if (mine) {
       items.push({ ic: 'edit', label: 'Edit', fn: () => startEdit(c, msgId) });
@@ -1297,16 +1264,6 @@
       }
       toast('Forwarded to ' + ids.length + ' conversation' + (ids.length > 1 ? 's' : ''));
     });
-  }
-  function toggleBookmark(c, msgId, btn) {
-    const msg = c.messages.find(m => m.id === msgId); if (!msg) return;
-    msg.bookmarked = !msg.bookmarked;
-    if (btn) btn.classList.toggle('on', msg.bookmarked);
-    toast(msg.bookmarked ? 'Saved to bookmarks' : 'Removed from saved');
-    if (msgId.startsWith('db')) {
-      const url = (R.bookmark || '/messages/{msg}/bookmark').replace('{msg}', msgDbId(msgId));
-      apiPost(url, {}).catch(() => {});
-    }
   }
   function nowTime() { return new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
 
@@ -1774,6 +1731,22 @@
           }
         });
         if (c.id === activeId) renderThread(c);
+      })
+      // Pins from other users
+      .listen('MessagePinned', e => {
+        const mid = 'db' + (e.pin?.message_id ?? e.message_id);
+        c.pinnedIds = c.pinnedIds || [];
+        if (!c.pinnedIds.includes(mid)) c.pinnedIds.push(mid);
+        const m = c.messages.find(x => x.id === mid);
+        if (m) m.pinned = true;
+        if (c.id === activeId) { renderThread(c); renderPanel(c); }
+      })
+      .listen('MessageUnpinned', e => {
+        const mid = 'db' + e.message_id;
+        c.pinnedIds = (c.pinnedIds || []).filter(x => x !== mid);
+        const m = c.messages.find(x => x.id === mid);
+        if (m) m.pinned = false;
+        if (c.id === activeId) { renderThread(c); renderPanel(c); }
       })
       .listenForWhisper('message-delivered', e => {
         // message_id comes as numeric string, our ids are prefixed 'db'

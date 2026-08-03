@@ -67,7 +67,6 @@ class ConversationController extends Controller
             'react'        => url('/messages/{msg}/reactions'),
             'pinAdd'       => url('/conversations/{conv}/pins'),
             'pinRemove'    => url('/conversations/{conv}/pins/{msg}'),
-            'bookmark'     => url('/messages/{msg}/bookmark'),
             'editMessage'  => url('/messages/{msg}'),
             'deleteMessage'=> url('/messages/{msg}'),
             'forward'      => url('/messages/{msg}/forward'),
@@ -134,6 +133,8 @@ class ConversationController extends Controller
         ];
         $grad = $gradPool[$c->id % count($gradPool)];
 
+        $pinnedRaw = $c->pins()->pluck('message_id')->all();
+
         // Read persistence: my message is 'read' when ALL other participants
         // have last_read_at >= message time (min of their read times)
         $otherReads = $c->participants()->where('user_id', '!=', $user->id)->pluck('last_read_at');
@@ -144,7 +145,7 @@ class ConversationController extends Controller
             ->orderBy('created_at','asc')
             ->take(60)
             ->get()
-            ->map(fn($m) => $this->msgToCP($m, $user, $othersReadAt))
+            ->map(fn($m) => $this->msgToCP($m, $user, $othersReadAt, $pinnedRaw))
             ->values()->all();
 
         $participant   = $c->participants()->where('user_id', $user->id)->first();
@@ -158,7 +159,7 @@ class ConversationController extends Controller
             if ($fu) $firstUnreadId = 'db'.$fu->id;
         }
 
-        $pinnedIds = $c->pins()->pluck('message_id')->map(fn($id) => 'db'.$id)->values()->all();
+        $pinnedIds = collect($pinnedRaw)->map(fn($id) => 'db'.$id)->values()->all();
 
         $lastText = '';
         if ($lastMsg) {
@@ -195,7 +196,7 @@ class ConversationController extends Controller
         return $base;
     }
 
-    private function msgToCP(Message $m, User $user, $othersReadAt = null): array
+    private function msgToCP(Message $m, User $user, $othersReadAt = null, array $pinnedIds = []): array
     {
         $reactions = $m->reactions->groupBy('emoji')
             ->map(fn($group) => $group->pluck('user_id')->values()->all())
@@ -215,6 +216,7 @@ class ConversationController extends Controller
             'status' => $status,
         ];
 
+        if (in_array($m->id, $pinnedIds)) $msg['pinned'] = true;
         if (!empty($reactions))     $msg['reactions'] = $reactions;
         if ($m->is_edited)          $msg['edited']    = true;
         if ($m->forwarded_from_id)  $msg['forwarded'] = true;
