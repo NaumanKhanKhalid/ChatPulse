@@ -4,7 +4,6 @@ use App\Http\Controllers\Auth\GuestLoginController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\BookmarkController;
 use App\Http\Controllers\CallController;
 use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\ExportController;
@@ -64,10 +63,6 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
     Route::post('/conversations/{conversation}/polls', [PollController::class, 'store'])->name('polls.store');
     Route::post('/polls/{poll}/vote', [PollController::class, 'vote'])->name('polls.vote');
     Route::patch('/polls/{poll}/close', [PollController::class, 'close'])->name('polls.close');
-
-    // Bookmarks
-    Route::get('/bookmarks', [BookmarkController::class, 'index'])->name('bookmarks.index');
-    Route::post('/messages/{message}/bookmark', [BookmarkController::class, 'toggle'])->name('bookmarks.toggle');
 
     // Groups
     Route::get('/groups/explore', [GroupController::class, 'explore'])->name('groups.explore');
