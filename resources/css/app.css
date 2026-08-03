@@ -1022,3 +1022,21 @@ html.dark .adm-badge.red { color: #fca5a5; }
   .app, .adm-side { height: calc(100vh / 0.85); }
   .adm-app { min-height: calc(100vh / 0.85); }
 }
+
+/* ===== Right panel — user detail view ===== */
+.pp-pres { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text3); margin-top: 6px; }
+.pp-pres.on { color: var(--primary); }
+.pp-dot { width: 8px; height: 8px; border-radius: 50%; }
+.pp-status-msg { font-size: 13px; font-weight: 600; color: var(--text2); font-style: italic; margin: 0 0 6px; }
+.pp-bio { font-size: 13px; color: var(--text2); line-height: 1.55; margin: 0; }
+.pp-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
+.pp-row-l { font-size: 12.5px; font-weight: 600; color: var(--text3); }
+.pp-row-v { font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 5px; }
+.pp-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.pp-ph { display: block; aspect-ratio: 1; border-radius: 10px; overflow: hidden; cursor: pointer; background: var(--input); }
+.pp-ph img { width: 100%; height: 100%; object-fit: cover; transition: transform .15s; }
+.pp-ph:hover img { transform: scale(1.06); }
+.pp-act { display: flex; align-items: center; gap: 11px; width: 100%; padding: 10px 12px; border-radius: 11px; font-size: 13.5px; font-weight: 600; color: var(--text2); text-align: left; transition: background .12s; }
+.pp-act:hover { background: var(--hover); color: var(--text); }
+.pp-act.danger { color: #ef4444; }
+.pp-act.danger:hover { background: rgba(239,68,68,.08); }
