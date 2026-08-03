@@ -236,8 +236,8 @@
     let lastUser = null, lastT = null;
     c.messages.forEach(msg => {
       if (c.firstUnreadId && msg.id === c.firstUnreadId) { html += `<div class="unread-div"><span>New messages</span></div>`; lastUser = null; }
-      const grouped = msg.user === lastUser && !msg.reply;
-      lastUser = msg.user; lastT = msg.t;
+      const grouped = !msg.system && msg.user === lastUser && !msg.reply;
+      lastUser = msg.system ? null : msg.user; lastT = msg.t;
       html += bubble(c, msg, grouped);
     });
     if (c.typing) {
@@ -353,6 +353,10 @@
   }
 
   function bubble(c, msg, grouped) {
+    // System notices (joins, group changes) render as a centered line
+    if (msg.system) {
+      return `<div class="sys-note" data-msg="${msg.id}"><span>${esc(msg.text || '')}</span></div>`;
+    }
     const u = users[msg.user];
     const mine = msg.user === me.id;
     const spam = isSpam(c, msg);
@@ -1675,6 +1679,7 @@
         const cp = { id: 'db' + msg.id, user: msg.user_id, t, text: msg.body || '', status: null };
         if (msg.parent_id) cp.reply = 'db' + msg.parent_id;
         if (msg.forwarded_from_id) cp.forwarded = true;
+        if (msg.type === 'system') cp.system = true;
         if (msg.type === 'voice') { cp.voice = '0:30'; delete cp.text; }
         if (msg.attachments && msg.attachments.length) {
           const imgAtts = msg.attachments.filter(a => a.file_type && a.file_type.startsWith('image/'));

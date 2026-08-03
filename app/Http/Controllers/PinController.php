@@ -6,13 +6,12 @@ use App\Events\MessageUnpinned;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\MessagePin;
-use App\Services\GroupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PinController extends Controller
 {
-    public function store(Request $request, Conversation $conversation, GroupService $groupService): JsonResponse
+    public function store(Request $request, Conversation $conversation): JsonResponse
     {
         $request->validate(['message_id' => ['required','integer','exists:messages,id']]);
 
@@ -30,7 +29,6 @@ class PinController extends Controller
             ['pinned_by'=>auth()->id(),'pinned_at'=>now()]
         );
 
-        $groupService->sendSystemMessage($conversation, auth()->user()->name . ' pinned a message');
         try { broadcast(new MessagePinned($pin->load('message.user','pinner')))->toOthers(); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
         return response()->json(['pin' => $pin]);
     }
