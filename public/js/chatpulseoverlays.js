@@ -333,7 +333,11 @@ window.CPOverlays = (function () {
     }
 
     function postJson(url, data) {
-      return fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
+      return fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+        .then(r => r.json().catch(() => ({})).then(body => {
+          if (!r.ok) throw new Error(body.error || ('HTTP ' + r.status));
+          return body;
+        }));
     }
 
     function setupWebRTC(isOffering) {
@@ -402,7 +406,10 @@ window.CPOverlays = (function () {
             if (window.Echo && callId) { callChannel = window.Echo.private('call.' + callId); callChannel.listen('CallEnded', () => { stopStreams(); closeCall(); }); }
             setupWebRTC(false);
             connected();
-          }).catch(() => connected());
+          }).catch(err => {
+            toastSafe('Could not join the call' + (err?.message ? ' — ' + err.message : ''));
+            stopStreams(); closeCall();
+          });
         });
       });
       ov.querySelector('[data-decline]')?.addEventListener('click', () => {
@@ -425,6 +432,7 @@ window.CPOverlays = (function () {
             // Subscribe immediately so a decline reaches us while still ringing
             callChannel = window.Echo.private('call.' + callId);
             callChannel.listen('CallAnswered', () => { clearTimeout(ringTimer); getMedia().then(() => { setupWebRTC(true); connected(); }); });
+          getMedia(); // warm up permissions during ringing
             callChannel.listen('CallEnded', () => { toastSafe(target.name + ' declined the call'); stopStreams(); closeCall(); });
           }
           // Stop ringing after 45s — nobody picked up
