@@ -23,11 +23,33 @@
     @if(request()->hasAny(['q','role','status']))
     <a href="{{ route('admin.users') }}" class="adm-link">Clear</a>
     @endif
+    <a href="{{ route('admin.users.export', request()->query()) }}" class="adm-btn-ghost" style="margin-left:auto">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;margin-right:5px"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Export CSV
+    </a>
+</form>
+
+{{-- Bulk actions bar (appears once rows are selected) --}}
+<form method="POST" action="{{ route('admin.users.bulk') }}" id="bulkForm">
+    @csrf
+    <div class="adm-bulk" id="bulkBar">
+        <span class="adm-bulk-count"><b id="bulkN">0</b> selected</span>
+        <select name="role" class="adm-select-sm" id="bulkRole">
+            <option value="">Change role…</option>
+            @foreach(['admin','user','guest'] as $r)<option value="{{ $r }}">{{ ucfirst($r) }}</option>@endforeach
+        </select>
+        <button type="submit" name="action" value="role" class="adm-btn-ghost">Apply role</button>
+        <button type="submit" name="action" value="unban" class="adm-btn-ghost" style="color:var(--primary)">Unban</button>
+        <button type="submit" name="action" value="ban" class="adm-btn-ghost danger"
+                onclick="const r = prompt('Ban reason (optional):'); if (r === null) return false; document.getElementById('bulkReason').value = r;">Ban</button>
+        <input type="hidden" name="reason" id="bulkReason" value="">
+        <button type="button" class="adm-link" id="bulkClear">Clear</button>
+    </div>
 </form>
 
 <div class="adm-card adm-card-flush">
     <table class="adm-table">
-        <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Joined</th><th style="text-align:right">Actions</th></tr></thead>
+        <thead><tr><th style="width:34px"><input type="checkbox" id="selAll" class="adm-check"></th><th>User</th><th>Role</th><th>Status</th><th>Joined</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
             @forelse($users as $u)
             @php
@@ -37,6 +59,9 @@
             @endphp
             <tr class="{{ $u->is_banned ? 'adm-tr-banned' : '' }}">
                 <td>
+                    @if(!$self)<input type="checkbox" class="adm-check row-check" value="{{ $u->id }}">@endif
+                </td>
+                <td>
                     <div class="adm-ucell">
                         <span class="adm-item-av">
                             <div class="avatar" style="width:34px;height:34px;background:linear-gradient(135deg,{{ $g[0] }},{{ $g[1] }});font-size:12.5px">{{ $ini }}</div>
@@ -44,7 +69,7 @@
                         </span>
                         <span>
                             <span class="adm-ucell-name">
-                                {{ $u->name }}
+                                <a href="{{ route('admin.users.show', $u) }}" class="adm-namelink">{{ $u->name }}</a>
                                 @if($u->is_guest)<em class="adm-tag amber">guest</em>@endif
                                 @if($self)<em class="adm-tag dim">you</em>@endif
                             </span>
@@ -95,7 +120,7 @@
             </tr>
             @if(!$self && !$u->isAdmin())
             <tr class="adm-perms-row" id="perms-{{ $u->id }}">
-                <td colspan="5">
+                <td colspan="6">
                     <form method="POST" action="{{ route('admin.users.permissions', $u) }}" class="adm-perms">
                         @csrf @method('PATCH')
                         <span class="adm-perms-lbl">Permissions</span>
@@ -111,10 +136,44 @@
             </tr>
             @endif
             @empty
-            <tr><td colspan="5" class="adm-empty">No users found.</td></tr>
+            <tr><td colspan="6" class="adm-empty">No users found.</td></tr>
             @endforelse
         </tbody>
     </table>
     <div class="adm-pager">{{ $users->links() }}</div>
 </div>
+<script>
+(function () {
+    const bar = document.getElementById('bulkBar');
+    const form = document.getElementById('bulkForm');
+    const nEl = document.getElementById('bulkN');
+    const boxes = () => [...document.querySelectorAll('.row-check')];
+
+    function sync() {
+        const picked = boxes().filter(b => b.checked);
+        nEl.textContent = picked.length;
+        bar.classList.toggle('show', picked.length > 0);
+        // keep the form's hidden ids in step with the selection
+        form.querySelectorAll('input[name="ids[]"]').forEach(i => i.remove());
+        picked.forEach(b => {
+            const h = document.createElement('input');
+            h.type = 'hidden'; h.name = 'ids[]'; h.value = b.value;
+            form.appendChild(h);
+        });
+    }
+
+    boxes().forEach(b => b.addEventListener('change', sync));
+    document.getElementById('selAll')?.addEventListener('change', e => {
+        boxes().forEach(b => b.checked = e.target.checked); sync();
+    });
+    document.getElementById('bulkClear')?.addEventListener('click', () => {
+        boxes().forEach(b => b.checked = false);
+        const sa = document.getElementById('selAll'); if (sa) sa.checked = false;
+        sync();
+    });
+    document.getElementById('bulkRole')?.addEventListener('change', function () {
+        form.querySelector('[name=role]').value = this.value;
+    });
+})();
+</script>
 @endsection
