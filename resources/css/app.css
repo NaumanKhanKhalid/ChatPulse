@@ -1274,3 +1274,25 @@ html.dark .call-btn:hover { background: rgba(16,185,129,.16); color: #6ee7b7; }
 @media (max-width: 900px) {
   .adm-convo-meta { display: none; }
 }
+
+/* ===== Admin: shared card list (users, messages, groups) ===== */
+.adm-list { display: flex; flex-direction: column; gap: 8px; }
+.adm-item { display: flex; align-items: flex-start; gap: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 13px 16px; transition: border-color .12s; }
+.adm-item:hover { border-color: var(--primary); }
+.adm-item.banned { border-left: 3px solid #ef4444; opacity: .82; }
+
+.adm-item-av { position: relative; flex-shrink: 0; }
+.adm-item-dot { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--online); border: 2px solid var(--card); }
+
+.adm-item-main { flex: 1; min-width: 0; }
+.adm-item-title { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 14.5px; color: var(--text); }
+.adm-item-title b { font-weight: 800; }
+.adm-item-body { font-size: 13.5px; color: var(--text2); line-height: 1.5; margin-top: 5px; word-wrap: break-word; overflow-wrap: anywhere; }
+.adm-item-sub { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12.5px; color: var(--text3); flex-wrap: wrap; }
+.adm-item-note { font-size: 12.5px; color: #ef4444; margin-top: 5px; }
+
+.adm-item-acts { display: flex; align-items: center; gap: 5px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+/* permissions drawer under a user card */
+.adm-perms-panel { display: none; background: var(--side); border: 1px solid var(--line); border-top: none; border-radius: 0 0 14px 14px; padding: 12px 16px; margin: -10px 0 0; }
+.adm-perms-panel.open { display: block; }
