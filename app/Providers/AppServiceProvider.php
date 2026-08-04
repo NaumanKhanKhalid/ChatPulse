@@ -13,6 +13,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Pagination ships with Tailwind markup that our custom CSS never
+        // compiles, so links rendered invisible. Use our own view instead.
+        \Illuminate\Pagination\Paginator::defaultView('vendor.pagination.chatpulse');
+        \Illuminate\Pagination\Paginator::defaultSimpleView('vendor.pagination.chatpulse');
+
         RateLimiter::for('login', fn(Request $req) =>
             Limit::perMinute(5)->by($req->ip())
         );
