@@ -97,6 +97,7 @@ class ConversationController extends Controller
             'notifRead'    => url('/notifications/{notif}/read'),
             'notifReadAll' => route('notifications.read-all'),
             'feedback'     => route('feedback.store'),
+            'report'       => route('reports.store'),
             'csrf'         => csrf_token(),
             'iceServers'   => $this->iceServers(),
         ]);

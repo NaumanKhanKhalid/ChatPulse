@@ -296,8 +296,9 @@ window.CPModals = (function () {
     let block = subject.kind === 'user';
     ov.querySelector('#repBlock')?.addEventListener('click', e => { block = !block; e.currentTarget.classList.toggle('on', block); });
     ov.querySelector('#repSend').addEventListener('click', () => {
+      // The caller sends it to the server and reports the real outcome
       onSubmit && onSubmit({ reason: sel, note: ov.querySelector('#repNote').value.trim(), block });
-      close(); toast('Report submitted — our team will review it');
+      close();
     });
   }
 

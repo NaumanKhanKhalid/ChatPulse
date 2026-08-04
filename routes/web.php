@@ -87,6 +87,10 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
+    // Reports (abuse)
+    Route::post('/reports', [\App\Http\Controllers\ReportController::class, 'store'])
+        ->name('reports.store')->middleware('throttle:10,1');
+
     // Feedback
     Route::post('/feedback', [\App\Http\Controllers\FeedbackController::class, 'store'])
         ->name('feedback.store')->middleware('throttle:6,1');
