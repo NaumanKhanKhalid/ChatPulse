@@ -1039,6 +1039,7 @@
   const typingConvChannels = {};
 
   function sendTypingWhisper() {
+    if (me.prefs && me.prefs.showTyping === false) return; // user turned typing indicators off
     if (!window.Echo || !activeId) return;
     const c = conversations.find(x => x.id === activeId);
     if (!c) return;
@@ -1830,6 +1831,11 @@
   }
 
   function boot() {
+    // Apply the user's appearance preferences to the document
+    if (me.prefs) {
+      document.documentElement.dataset.fontSize = me.prefs.fontSize || 'md';
+      document.documentElement.dataset.bubble = me.prefs.bubbleStyle || 'modern';
+    }
     initDark(); initRail(); initComposer(); initNet(); initThreadSearch(); initHeartbeat();
     listSkeleton(); threadSkeleton();
     setTimeout(() => {

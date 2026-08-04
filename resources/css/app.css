@@ -1372,3 +1372,18 @@ html.dark .call-btn:hover { background: rgba(16,185,129,.16); color: #6ee7b7; }
 html.dark .adm-pal-item.on { background: rgba(16,185,129,.14); color: #6ee7b7; }
 .adm-pal-item.on kbd { opacity: 1; }
 .adm-pal-empty { padding: 26px; text-align: center; font-size: 13px; color: var(--text3); }
+
+/* ===== Appearance preferences (Settings → Appearance) ===== */
+html[data-font-size="sm"] .b-text { font-size: 13px; }
+html[data-font-size="sm"] .convo-name { font-size: 13px; }
+html[data-font-size="sm"] #composer-input { font-size: 13px; }
+html[data-font-size="lg"] .b-text { font-size: 15.5px; }
+html[data-font-size="lg"] .convo-name { font-size: 15px; }
+html[data-font-size="lg"] #composer-input { font-size: 15.5px; }
+
+/* bubble styles */
+html[data-bubble="classic"] .b-text { border-radius: 16px; }
+html[data-bubble="classic"] .msg.mine .b-text { border-radius: 16px; }
+html[data-bubble="minimal"] .b-text { background: transparent; border-color: transparent; padding-left: 0; padding-right: 0; }
+html[data-bubble="minimal"] .msg.mine .b-text { background: transparent; }
+html[data-bubble="minimal"] .msg.mine .b-text { border-left: 2px solid var(--primary); padding-left: 10px; }
