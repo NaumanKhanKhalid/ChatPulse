@@ -593,7 +593,10 @@
       // $('#qCall')?.addEventListener('click', () => CPOverlays.openCall(peer, 'audio', true, c.id));
       // $('#qVideo')?.addEventListener('click', () => CPOverlays.openCall(peer, 'video', true, c.id));
       $('#ppMute')?.addEventListener('click', () => { c.muted = !c.muted; toast(c.muted ? 'Notifications muted' : 'Notifications unmuted'); renderPanel(c); renderList($('#search').value); });
-      $('#ppBlock')?.addEventListener('click', () => CPModals.openReport({ kind: 'user', name: peer.name }, () => toast(peer.name + ' reported')));
+      $('#ppBlock')?.addEventListener('click', () => CPModals.openReport({ kind: 'user', name: peer.name }, res => {
+        if (res.block) blockedUsers.add(peer.id);
+        submitReport({ reason: res.reason, note: res.note, user_id: peer.id });
+      }));
     }
     $('#qSearch')?.addEventListener('click', openThreadSearch);
   }
@@ -934,6 +937,22 @@
     deliverMessage(c, msg);
   }
 
+
+  /* ---------- abuse reports ---------- */
+  function submitReport(payload, onDone) {
+    const R = window.CP_ROUTES || {};
+    fetch(R.report || '/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(r => r.json().catch(() => ({})).then(b => { if (!r.ok) throw new Error(b.error || 'Failed'); return b; }))
+      .then(data => {
+        toast(data.duplicate ? 'You already reported this — our team is on it' : 'Report submitted — our team will review it');
+        onDone && onDone();
+      })
+      .catch(err => toast(err.message || 'Could not submit the report', true));
+  }
 
   /* ---------- feedback / support ---------- */
   function openFeedback(preset) {
@@ -1431,6 +1450,9 @@
       msg.reported = res.reason;
       if (res.block) { blockedUsers.add(msg.user); toast(u.name + ' blocked'); }
       renderThread(c);
+      if (msg.id.startsWith('db')) {
+        submitReport({ reason: res.reason, note: res.note, message_id: +msgDbId(msg.id) });
+      }
     });
   }
   const blockedUsers = new Set();

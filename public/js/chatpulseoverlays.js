@@ -145,7 +145,14 @@ window.CPOverlays = (function () {
       </div>`;
     const ov = M().__open ? M().__open('Profile', body) : open('Profile', body);
     ov.querySelectorAll('[data-pcall]').forEach(b => b.addEventListener('click', () => { M().close(); openCall(u, b.dataset.pcall, false); }));
-    ov.querySelector('[data-preport]')?.addEventListener('click', () => CPModals.openReport({ kind: 'user', name: u.name, preview: '@' + u.username }, () => {}));
+    ov.querySelector('[data-preport]')?.addEventListener('click', () => CPModals.openReport({ kind: 'user', name: u.name, preview: '@' + u.username }, res => {
+      const R = window.CP_ROUTES || {};
+      fetch(R.report || '/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json' },
+        body: JSON.stringify({ reason: res.reason, note: res.note, user_id: u.id }),
+      }).catch(() => {});
+    }));
     ov.querySelector('[data-pblock]')?.addEventListener('click', () => { window.CPAccount && CPAccount.block(u.id); M().close(); CPModals.toast(u.name + ' blocked'); });
   }
 
