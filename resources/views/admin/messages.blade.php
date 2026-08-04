@@ -13,39 +13,38 @@
     @endif
 </form>
 
-<div class="adm-card adm-card-flush">
-    <table class="adm-table">
-        <thead><tr><th>From</th><th>Message</th><th>Conversation</th><th>Sent</th><th style="text-align:right">Actions</th></tr></thead>
-        <tbody>
-            @forelse($messages as $m)
-            <tr>
-                <td>
-                    @if($m->user)
-                    @php $g = $m->user->avatarGradient(); $ini = collect(explode(' ',$m->user->name))->map(fn($w)=>strtoupper(substr($w,0,1)))->take(2)->join(''); @endphp
-                    <div class="adm-ucell">
-                        <div class="avatar" style="width:30px;height:30px;background:linear-gradient(135deg,{{ $g[0] }},{{ $g[1] }});font-size:11px">{{ $ini }}</div>
-                        <span class="adm-ucell-name">{{ $m->user->name }}</span>
-                    </div>
-                    @else — @endif
-                </td>
-                <td class="adm-td-msg">
-                    {{ \Illuminate\Support\Str::limit($m->body ?: '['.$m->type.' message]', 80) }}
-                    @if($m->is_edited)<em class="adm-tag dim">edited</em>@endif
-                </td>
-                <td>{{ $m->conversation?->name ?? 'Direct' }}</td>
-                <td class="adm-td-dim">{{ $m->created_at->format('M j · g:i A') }}</td>
-                <td style="text-align:right">
-                    <form method="POST" action="{{ route('admin.messages.destroy', $m) }}" class="adm-inline" onsubmit="return confirm('Delete this message?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="adm-act red">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            @empty
-            <tr><td colspan="5" class="adm-empty">No messages found.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-    <div class="adm-pager">{{ $messages->links() }}</div>
+<div class="adm-list">
+    @forelse($messages as $m)
+    @php
+        $u = $m->user;
+        $g = $u?->avatarGradient() ?? ['#8a958f','#5d6b65'];
+        $ini = $u ? collect(explode(' ', $u->name))->map(fn($w)=>strtoupper(substr($w,0,1)))->take(2)->join('') : '?';
+    @endphp
+    <div class="adm-item">
+        <div class="adm-item-av">
+            <div class="avatar" style="width:40px;height:40px;background:linear-gradient(135deg,{{ $g[0] }},{{ $g[1] }});font-size:14px">{{ $ini }}</div>
+        </div>
+        <div class="adm-item-main">
+            <div class="adm-item-title">
+                <b>{{ $u?->name ?? 'Unknown user' }}</b>
+                <em class="adm-tag dim">{{ $m->conversation?->name ?? 'Direct' }}</em>
+                @if($m->is_edited)<em class="adm-tag dim">edited</em>@endif
+                @if($m->type !== 'text')<em class="adm-tag amber">{{ $m->type }}</em>@endif
+            </div>
+            <div class="adm-item-body">{{ \Illuminate\Support\Str::limit($m->body ?: '['.$m->type.' message]', 140) }}</div>
+            <div class="adm-item-sub"><span>{{ $m->created_at->format('M j, Y · g:i A') }}</span></div>
+        </div>
+        <div class="adm-item-acts">
+            <form method="POST" action="{{ route('admin.messages.destroy', $m) }}" class="adm-inline" onsubmit="return confirm('Delete this message?')">
+                @csrf @method('DELETE')
+                <button type="submit" class="adm-act red">Delete</button>
+            </form>
+        </div>
+    </div>
+    @empty
+    <div class="adm-card"><p class="adm-empty">No messages found.</p></div>
+    @endforelse
 </div>
+
+<div class="adm-pager">{{ $messages->links() }}</div>
 @endsection

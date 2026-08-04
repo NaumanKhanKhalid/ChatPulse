@@ -25,85 +25,86 @@
     @endif
 </form>
 
-<div class="adm-card adm-card-flush">
-    <table class="adm-table">
-        <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Joined</th><th style="text-align:right">Actions</th></tr></thead>
-        <tbody>
-            @foreach($users as $u)
-            @php $g = $u->avatarGradient(); $ini = collect(explode(' ',$u->name))->map(fn($w)=>strtoupper(substr($w,0,1)))->take(2)->join(''); @endphp
-            <tr>
-                <td>
-                    <div class="adm-ucell">
-                        <div class="avatar" style="width:34px;height:34px;background:linear-gradient(135deg,{{ $g[0] }},{{ $g[1] }});font-size:12.5px">{{ $ini }}</div>
-                        <div>
-                            <span class="adm-ucell-name">{{ $u->name }}@if($u->is_guest)<em class="adm-tag amber">guest</em>@endif</span>
-                            <span class="adm-ucell-sub">{{ $u->email ?? '@'.$u->username }}</span>
-                        </div>
-                    </div>
-                </td>
-                <td>
-                    @if($u->id !== auth()->id())
-                    <form method="POST" action="{{ route('admin.users.role', $u) }}">
-                        @csrf @method('PATCH')
-                        <select name="role" onchange="this.form.submit()" class="adm-select-sm">
-                            @foreach(['admin','user','guest'] as $r)
-                            <option value="{{ $r }}" {{ $u->role === $r ? 'selected' : '' }}>{{ $r }}</option>
-                            @endforeach
-                        </select>
-                    </form>
-                    @else
-                    <span class="adm-tag green">you · admin</span>
-                    @endif
-                </td>
-                <td>
-                    @if($u->is_banned)
-                    <span class="adm-badge red" title="{{ $u->banned_reason }}">Banned</span>
-                    @elseif($u->is_online)
-                    <span class="adm-badge green">Online</span>
-                    @else
-                    <span class="adm-badge dim">Offline</span>
-                    @endif
-                </td>
-                <td class="adm-td-dim">{{ $u->created_at->format('M j, Y') }}</td>
-                <td style="text-align:right">
-                    @if($u->id !== auth()->id() && !$u->isAdmin())
-                        <button type="button" class="adm-act dim" onclick="document.getElementById('perms-{{ $u->id }}').classList.toggle('open')">Perms</button>
-                        @if($u->is_banned)
-                        <form method="POST" action="{{ route('admin.users.unban', $u) }}" class="adm-inline">
-                            @csrf
-                            <button type="submit" class="adm-act green">Unban</button>
-                        </form>
-                        @else
-                        <form method="POST" action="{{ route('admin.users.ban', $u) }}" class="adm-inline"
-                              onsubmit="const r = prompt('Ban reason (optional):'); if (r === null) return false; this.querySelector('[name=reason]').value = r; return true;">
-                            @csrf
-                            <input type="hidden" name="reason" value="">
-                            <button type="submit" class="adm-act red">Ban</button>
-                        </form>
-                        @endif
-                    @endif
-                </td>
-            </tr>
-            @if($u->id !== auth()->id() && !$u->isAdmin())
-            <tr class="adm-perms-row" id="perms-{{ $u->id }}">
-                <td colspan="5">
-                    <form method="POST" action="{{ route('admin.users.permissions', $u) }}" class="adm-perms">
-                        @csrf @method('PATCH')
-                        <span class="adm-perms-lbl">Permissions:</span>
-                        @foreach(\App\Models\User::PERMISSIONS as $key => [$label, $default])
-                        <label class="adm-perm">
-                            <input type="checkbox" name="{{ $key }}" value="1" {{ $u->hasPerm($key) ? 'checked' : '' }}>
-                            <span>{{ $label }}</span>
-                        </label>
-                        @endforeach
-                        <button type="submit" class="adm-btn" style="height:32px;padding:0 14px;font-size:12px">Save</button>
-                    </form>
-                </td>
-            </tr>
+<div class="adm-list">
+    @forelse($users as $u)
+    @php
+        $g   = $u->avatarGradient();
+        $ini = collect(explode(' ', $u->name))->map(fn($w)=>strtoupper(substr($w,0,1)))->take(2)->join('');
+        $self = $u->id === auth()->id();
+    @endphp
+    <div class="adm-item {{ $u->is_banned ? 'banned' : '' }}">
+        <div class="adm-item-av">
+            <div class="avatar" style="width:42px;height:42px;background:linear-gradient(135deg,{{ $g[0] }},{{ $g[1] }});font-size:15px">{{ $ini }}</div>
+            @if($u->is_online && !$u->is_banned)<span class="adm-item-dot"></span>@endif
+        </div>
+
+        <div class="adm-item-main">
+            <div class="adm-item-title">
+                <b>{{ $u->name }}</b>
+                @if($u->role === 'admin')<em class="adm-tag green">admin</em>@endif
+                @if($u->is_guest)<em class="adm-tag amber">guest</em>@endif
+                @if($u->is_banned)<em class="adm-tag red">banned</em>@endif
+                @if($self)<em class="adm-tag dim">you</em>@endif
+            </div>
+            <div class="adm-item-sub">
+                <span>{{ $u->email ?? '@'.$u->username }}</span>
+                <span class="adm-convo-dot">·</span>
+                <span>{{ $u->is_banned ? 'Banned '.$u->banned_at?->diffForHumans() : ($u->is_online ? 'Online now' : ($u->last_seen_at ? 'Last seen '.$u->last_seen_at->diffForHumans(null, true) : 'Offline')) }}</span>
+                <span class="adm-convo-dot">·</span>
+                <span>Joined {{ $u->created_at->format('M Y') }}</span>
+            </div>
+            @if($u->is_banned && $u->banned_reason)
+            <div class="adm-item-note">Reason: {{ \Illuminate\Support\Str::limit($u->banned_reason, 80) }}</div>
             @endif
+        </div>
+
+        <div class="adm-item-acts">
+            @if(!$self)
+            <form method="POST" action="{{ route('admin.users.role', $u) }}" class="adm-inline">
+                @csrf @method('PATCH')
+                <select name="role" onchange="this.form.submit()" class="adm-select-sm">
+                    @foreach(['admin','user','guest'] as $r)
+                    <option value="{{ $r }}" {{ $u->role === $r ? 'selected' : '' }}>{{ $r }}</option>
+                    @endforeach
+                </select>
+            </form>
+                @if(!$u->isAdmin())
+                <button type="button" class="adm-act dim" onclick="document.getElementById('perms-{{ $u->id }}').classList.toggle('open')">Perms</button>
+                    @if($u->is_banned)
+                    <form method="POST" action="{{ route('admin.users.unban', $u) }}" class="adm-inline">
+                        @csrf<button type="submit" class="adm-act green">Unban</button>
+                    </form>
+                    @else
+                    <form method="POST" action="{{ route('admin.users.ban', $u) }}" class="adm-inline"
+                          onsubmit="const r = prompt('Ban reason (optional):'); if (r === null) return false; this.querySelector('[name=reason]').value = r; return true;">
+                        @csrf<input type="hidden" name="reason" value="">
+                        <button type="submit" class="adm-act red">Ban</button>
+                    </form>
+                    @endif
+                @endif
+            @endif
+        </div>
+    </div>
+
+    @if(!$self && !$u->isAdmin())
+    <div class="adm-perms-panel" id="perms-{{ $u->id }}">
+        <form method="POST" action="{{ route('admin.users.permissions', $u) }}" class="adm-perms">
+            @csrf @method('PATCH')
+            <span class="adm-perms-lbl">Permissions</span>
+            @foreach(\App\Models\User::PERMISSIONS as $key => [$label, $default])
+            <label class="adm-perm">
+                <input type="checkbox" name="{{ $key }}" value="1" {{ $u->hasPerm($key) ? 'checked' : '' }}>
+                <span>{{ $label }}</span>
+            </label>
             @endforeach
-        </tbody>
-    </table>
-    <div class="adm-pager">{{ $users->links() }}</div>
+            <button type="submit" class="adm-btn" style="height:32px;padding:0 14px;font-size:12px">Save</button>
+        </form>
+    </div>
+    @endif
+    @empty
+    <div class="adm-card"><p class="adm-empty">No users found.</p></div>
+    @endforelse
 </div>
+
+<div class="adm-pager">{{ $users->links() }}</div>
 @endsection

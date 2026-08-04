@@ -13,38 +13,40 @@
     @endif
 </form>
 
-<div class="adm-card adm-card-flush">
-    <table class="adm-table">
-        <thead><tr><th>Group</th><th>Type</th><th>Members</th><th>Messages</th><th>Created</th><th style="text-align:right">Actions</th></tr></thead>
-        <tbody>
-            @forelse($groups as $group)
-            <tr>
-                <td>
-                    <div class="adm-ucell">
-                        @php $ini = collect(explode(' ',$group->name ?? 'G'))->map(fn($w)=>strtoupper(substr($w,0,1)))->take(2)->join(''); @endphp
-                        <div class="avatar" style="width:32px;height:32px;background:linear-gradient(135deg,#818cf8,#7c3aed);font-size:12px">{{ $ini }}</div>
-                        <div>
-                            <span class="adm-ucell-name">{{ $group->name ?? 'Unnamed' }}</span>
-                            @if($group->description)<span class="adm-ucell-sub">{{ \Illuminate\Support\Str::limit($group->description, 40) }}</span>@endif
-                        </div>
-                    </div>
-                </td>
-                <td><span class="adm-badge {{ $group->is_private ? 'dim' : 'green' }}">{{ $group->is_private ? 'Private' : 'Public' }}</span></td>
-                <td>{{ $group->participants_count }}</td>
-                <td>{{ $group->messages_count }}</td>
-                <td class="adm-td-dim">{{ $group->created_at->format('M j, Y') }}</td>
-                <td style="text-align:right">
-                    <form method="POST" action="{{ route('admin.groups.destroy', $group) }}" class="adm-inline" onsubmit="return confirm('Delete group “{{ $group->name }}” and all its messages?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="adm-act red">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            @empty
-            <tr><td colspan="6" class="adm-empty">No groups found.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-    <div class="adm-pager">{{ $groups->links() }}</div>
+<div class="adm-list">
+    @forelse($groups as $group)
+    @php $ini = collect(explode(' ', $group->name ?? 'G'))->map(fn($w)=>strtoupper(substr($w,0,1)))->take(2)->join(''); @endphp
+    <div class="adm-item">
+        <div class="adm-item-av">
+            <div class="avatar" style="width:42px;height:42px;background:linear-gradient(135deg,#818cf8,#7c3aed);font-size:15px">{{ $ini }}</div>
+        </div>
+        <div class="adm-item-main">
+            <div class="adm-item-title">
+                <b>{{ $group->name ?? 'Unnamed group' }}</b>
+                <em class="adm-tag {{ $group->is_private ? 'dim' : 'green' }}">{{ $group->is_private ? 'private' : 'public' }}</em>
+            </div>
+            @if($group->description)
+            <div class="adm-item-body">{{ \Illuminate\Support\Str::limit($group->description, 100) }}</div>
+            @endif
+            <div class="adm-item-sub">
+                <span>{{ $group->participants_count }} members</span>
+                <span class="adm-convo-dot">·</span>
+                <span>{{ $group->messages_count }} messages</span>
+                <span class="adm-convo-dot">·</span>
+                <span>Created {{ $group->created_at->format('M j, Y') }}</span>
+            </div>
+        </div>
+        <div class="adm-item-acts">
+            <form method="POST" action="{{ route('admin.groups.destroy', $group) }}" class="adm-inline" onsubmit="return confirm('Delete group “{{ $group->name }}” and all its messages?')">
+                @csrf @method('DELETE')
+                <button type="submit" class="adm-act red">Delete</button>
+            </form>
+        </div>
+    </div>
+    @empty
+    <div class="adm-card"><p class="adm-empty">No groups found.</p></div>
+    @endforelse
 </div>
+
+<div class="adm-pager">{{ $groups->links() }}</div>
 @endsection
