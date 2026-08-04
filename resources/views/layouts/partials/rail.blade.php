@@ -20,10 +20,11 @@ try {
         @if($railUnread > 0)<span class="rb-badge">{{ $railUnread > 9 ? '9+' : $railUnread }}</span>@endif
     </button>
 
-    <button class="rail-btn" data-nav="calls" title="Calls">
+    {{-- Calls disabled for now --}}
+    {{-- <button class="rail-btn" data-nav="calls" title="Calls">
         <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M6.2 4.5 8 4l1.6 3.4-1.5 1.3a11 11 0 0 0 4.7 4.7l1.3-1.5L17.5 15l-.5 1.8c-.2.7-.9 1.1-1.6 1A14 14 0 0 1 4.2 6.6c-.1-.7.3-1.4 1-1.6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
         @if(($railMissedCalls ?? 0) > 0)<span class="rb-badge">{{ $railMissedCalls > 9 ? '9+' : $railMissedCalls }}</span>@endif
-    </button>
+    </button> --}}
 
     <div class="rail-div"></div>
 
