@@ -12,8 +12,20 @@
         <option value="direct" {{ request('type')==='direct'?'selected':'' }}>Direct</option>
         <option value="group"  {{ request('type')==='group'?'selected':'' }}>Group</option>
     </select>
-    <button type="submit" class="adm-btn">Search</button>
-    @if(request()->hasAny(['q','type']))
+    <select name="activity" onchange="this.form.submit()">
+        <option value="">Any activity</option>
+        <option value="active" {{ request('activity')==='active'?'selected':'' }}>Active this week</option>
+        <option value="empty"  {{ request('activity')==='empty'?'selected':'' }}>No messages</option>
+    </select>
+    <select name="sort" onchange="this.form.submit()">
+        <option value="recent"   {{ request('sort','recent')==='recent'?'selected':'' }}>Recently active</option>
+        <option value="newest"   {{ request('sort')==='newest'?'selected':'' }}>Newest</option>
+        <option value="oldest"   {{ request('sort')==='oldest'?'selected':'' }}>Oldest</option>
+        <option value="messages" {{ request('sort')==='messages'?'selected':'' }}>Most messages</option>
+        <option value="members"  {{ request('sort')==='members'?'selected':'' }}>Most members</option>
+    </select>
+    <button type="submit" class="adm-btn">Apply</button>
+    @if(request()->hasAny(['q','type','sort','activity']))
     <a href="{{ route('admin.conversations') }}" class="adm-link">Clear</a>
     @endif
 </form>

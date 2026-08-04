@@ -25,7 +25,18 @@ class UserController extends Controller
         if ($role = $request->query('role')) $q->where('role', $role);
         if ($request->query('status') === 'online') $q->where('is_online', true);
         if ($request->query('status') === 'banned') $q->where('is_banned', true);
-        $users = $q->orderByDesc('created_at')->paginate(20)->withQueryString();
+        if ($from = $request->query('from')) $q->whereDate('created_at', '>=', $from);
+        if ($to   = $request->query('to'))   $q->whereDate('created_at', '<=', $to);
+
+        match ($request->query('sort', 'newest')) {
+            'oldest'   => $q->orderBy('created_at'),
+            'name'     => $q->orderBy('name'),
+            'active'   => $q->orderByDesc('last_seen_at'),
+            'messages' => $q->withCount('messages')->orderByDesc('messages_count'),
+            default    => $q->orderByDesc('created_at'),
+        };
+
+        $users = $q->paginate(20)->withQueryString();
         return view('admin.users', compact('users'));
     }
 

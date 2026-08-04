@@ -19,8 +19,17 @@
         <option value="online" {{ request('status')==='online'?'selected':'' }}>Online</option>
         <option value="banned" {{ request('status')==='banned'?'selected':'' }}>Banned</option>
     </select>
-    <button type="submit" class="adm-btn">Search</button>
-    @if(request()->hasAny(['q','role','status']))
+    <select name="sort" onchange="this.form.submit()">
+        <option value="newest"   {{ request('sort','newest')==='newest'?'selected':'' }}>Newest</option>
+        <option value="oldest"   {{ request('sort')==='oldest'?'selected':'' }}>Oldest</option>
+        <option value="name"     {{ request('sort')==='name'?'selected':'' }}>Name A–Z</option>
+        <option value="active"   {{ request('sort')==='active'?'selected':'' }}>Recently active</option>
+        <option value="messages" {{ request('sort')==='messages'?'selected':'' }}>Most messages</option>
+    </select>
+    <input type="date" name="from" value="{{ request('from') }}" class="adm-input" style="height:38px" title="Joined from">
+    <input type="date" name="to" value="{{ request('to') }}" class="adm-input" style="height:38px" title="Joined to">
+    <button type="submit" class="adm-btn">Apply</button>
+    @if(request()->hasAny(['q','role','status','sort','from','to']))
     <a href="{{ route('admin.users') }}" class="adm-link">Clear</a>
     @endif
     <a href="{{ route('admin.users.export', request()->query()) }}" class="adm-btn-ghost" style="margin-left:auto">

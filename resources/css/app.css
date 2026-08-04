@@ -1452,3 +1452,10 @@ html.dark .fb-done-ic { background: rgba(16,185,129,.16); color: #6ee7b7; }
 .cp-pag-gap { padding: 0 4px; color: var(--text3); font-size: 13px; }
 
 @media (max-width: 620px) { .cp-pag-nums { display: none; } }
+
+/* admin filter bar wraps nicely with many controls */
+.adm-filters { row-gap: 8px; }
+.adm-filters input[type="date"] { color-scheme: light; }
+html.dark .adm-filters input[type="date"] { color-scheme: dark; }
+.adm-item.adm-row-click { cursor: pointer; }
+.adm-item.adm-row-click:hover { border-color: var(--primary); }

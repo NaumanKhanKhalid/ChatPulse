@@ -172,6 +172,7 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
         Route::get('/messages', [\App\Http\Controllers\Admin\MessageController::class, 'index'])->name('messages');
         Route::delete('/messages/{message}', [\App\Http\Controllers\Admin\MessageController::class, 'destroy'])->name('messages.destroy');
         Route::get('/groups', [\App\Http\Controllers\Admin\GroupController::class, 'index'])->name('groups');
+        Route::get('/groups/{conversation}', [\App\Http\Controllers\Admin\GroupController::class, 'show'])->name('groups.show');
         Route::delete('/groups/{conversation}', [\App\Http\Controllers\Admin\GroupController::class, 'destroy'])->name('groups.destroy');
         Route::get('/security', [\App\Http\Controllers\Admin\SecurityController::class, 'index'])->name('security');
         Route::post('/security/ban-ip', [\App\Http\Controllers\Admin\SecurityController::class, 'banIp'])->name('security.ban-ip');

@@ -19,9 +19,18 @@ class ConversationController extends Controller
                 ->orWhereHas('users', fn($u) => $u->where('name', 'like', "%$s%")));
         }
         if ($type = $request->query('type')) $q->where('type', $type);
+        if ($request->query('activity') === 'empty')  $q->has('messages', '=', 0);
+        if ($request->query('activity') === 'active') $q->where('last_activity_at', '>=', now()->subDays(7));
 
-        $conversations = $q->orderByDesc('last_activity_at')->orderByDesc('created_at')
-            ->paginate(20)->withQueryString();
+        match ($request->query('sort', 'recent')) {
+            'oldest'   => $q->orderBy('created_at'),
+            'newest'   => $q->orderByDesc('created_at'),
+            'messages' => $q->orderByDesc('messages_count'),
+            'members'  => $q->orderByDesc('participants_count'),
+            default    => $q->orderByDesc('last_activity_at')->orderByDesc('created_at'),
+        };
+
+        $conversations = $q->paginate(20)->withQueryString();
 
         return view('admin.conversations', compact('conversations'));
     }
