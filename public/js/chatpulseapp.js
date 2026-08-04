@@ -488,11 +488,15 @@
   function durToSec(s) { const p = (s || '0:00').split(':'); return (+p[0]) * 60 + (+p[1] || 0); }
   function fmtDur(sec) { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
   function voice(msg, mine) {
+    // msg.voice is { src, dur } — older payloads may still be a plain string
+    const v = (typeof msg.voice === 'string') ? { src: null, dur: msg.voice } : (msg.voice || {});
+    const dur = v.dur || '0:00';
     const heights = [7, 12, 18, 10, 22, 14, 8, 20, 12, 16, 6, 19, 13, 9, 23, 11, 17, 7, 15, 21, 10, 16, 8, 18, 12, 14, 9, 20, 11, 7];
     const bars = heights.map(h => `<span style="height:${h}px"></span>`).join('');
-    return `<div class="voice" data-voice="${msg.id}" data-dur="${durToSec(msg.voice)}">
+    return `<div class="voice" data-voice="${msg.id}" data-dur="${durToSec(dur)}">
       <button class="v-play" title="Play"><svg class="v-ic-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5L8 5.5Z"/></svg><svg class="v-ic-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5h3v14H8zM13 5h3v14h-3z"/></svg></button>
-      <div class="v-bars">${bars}</div><span class="v-dur">${msg.voice}</span></div>`;
+      <div class="v-bars">${bars}</div><span class="v-dur">${esc(dur)}</span>
+      ${v.src ? `<audio class="v-audio" preload="none" src="${esc(v.src)}"></audio>` : ''}</div>`;
   }
 
   function poll(msg) {
@@ -680,30 +684,68 @@
   let playingVoice = null;
   function toggleVoice(v) {
     if (playingVoice && playingVoice !== v) stopVoice(playingVoice);
-    if (v._timer) pauseVoice(v); else playVoice(v);
+    const audio = v.querySelector('.v-audio');
+    const playing = audio ? !audio.paused : !!v._timer;
+    if (playing) pauseVoice(v); else playVoice(v);
   }
   function playVoice(v) {
-    const total = +v.dataset.dur || 1;
-    const bars = [...v.querySelectorAll('.v-bars span')];
+    const audio = v.querySelector('.v-audio');
+    const bars  = [...v.querySelectorAll('.v-bars span')];
     const durEl = v.querySelector('.v-dur');
+    const fallbackTotal = +v.dataset.dur || 1;
+
     v.classList.add('playing'); playingVoice = v;
+
+    const paint = (el, total) => {
+      const p = total ? Math.min(1, el / total) : 0;
+      bars.forEach((b, i) => b.classList.toggle('played', (i + 1) / bars.length <= p));
+      durEl.textContent = fmtDur(el);
+    };
+
+    // Real audio when we have a source; the animated bars follow it
+    if (audio) {
+      audio.play().then(() => {
+        v._onTime = () => paint(audio.currentTime, audio.duration || fallbackTotal);
+        v._onEnd  = () => stopVoice(v);
+        audio.addEventListener('timeupdate', v._onTime);
+        audio.addEventListener('ended', v._onEnd);
+      }).catch(() => {
+        toast('Could not play this voice message', true);
+        stopVoice(v);
+      });
+      return;
+    }
+
+    // No source (legacy message) — keep the old visual-only playback
     let start = Date.now() - (v._elapsed || 0) * 1000;
     v._timer = setInterval(() => {
       let el = (Date.now() - start) / 1000;
-      if (el >= total) el = total;
-      const p = el / total;
-      bars.forEach((b, i) => b.classList.toggle('played', (i + 1) / bars.length <= p));
-      durEl.textContent = fmtDur(el);
+      if (el >= fallbackTotal) el = fallbackTotal;
+      paint(el, fallbackTotal);
       v._elapsed = el;
-      if (el >= total) { clearInterval(v._timer); v._timer = null; setTimeout(() => stopVoice(v), 200); }
+      if (el >= fallbackTotal) { clearInterval(v._timer); v._timer = null; setTimeout(() => stopVoice(v), 200); }
     }, 60);
   }
+
   function pauseVoice(v) {
-    clearInterval(v._timer); v._timer = null; v.classList.remove('playing');
+    const audio = v.querySelector('.v-audio');
+    if (audio) audio.pause();
+    clearInterval(v._timer); v._timer = null;
+    v.classList.remove('playing');
     if (playingVoice === v) playingVoice = null;
   }
+
   function stopVoice(v) {
-    clearInterval(v._timer); v._timer = null; v._elapsed = 0; v.classList.remove('playing');
+    const audio = v.querySelector('.v-audio');
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+      if (v._onTime) audio.removeEventListener('timeupdate', v._onTime);
+      if (v._onEnd)  audio.removeEventListener('ended', v._onEnd);
+      v._onTime = v._onEnd = null;
+    }
+    clearInterval(v._timer); v._timer = null; v._elapsed = 0;
+    v.classList.remove('playing');
     v.querySelectorAll('.v-bars span').forEach(b => b.classList.remove('played'));
     v.querySelector('.v-dur').textContent = fmtDur(+v.dataset.dur);
     if (playingVoice === v) playingVoice = null;
@@ -1039,6 +1081,7 @@
   const typingConvChannels = {};
 
   function sendTypingWhisper() {
+    if (me.prefs && me.prefs.showTyping === false) return; // user turned typing indicators off
     if (!window.Echo || !activeId) return;
     const c = conversations.find(x => x.id === activeId);
     if (!c) return;
@@ -1144,7 +1187,7 @@
   function sendVoice(blob, secs) {
     const c = conversations.find(x => x.id === activeId);
     if (!c) return;
-    const msg = { id: 'v' + Date.now(), user: me.id, t: nowTime(), voice: fmtDur(secs), status: 'sending', uploading: true, progress: 0, _voiceBlob: blob };
+    const msg = { id: 'v' + Date.now(), user: me.id, t: nowTime(), voice: { src: URL.createObjectURL(blob), dur: fmtDur(secs) }, status: 'sending', uploading: true, progress: 0, _voiceBlob: blob };
     c.messages.push(msg); c.last = 'You: 🎤 Voice message'; c.time = nowTime();
     renderThread(c); renderList($('#search').value);
     const R = window.CP_ROUTES || {};
@@ -1153,6 +1196,7 @@
     const fd = new FormData();
     fd.append('attachments[]', blob, 'voice-' + Date.now() + '.webm');
     fd.append('type', 'voice');
+    fd.append('body', fmtDur(secs)); // duration survives a reload
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url);
     xhr.setRequestHeader('X-CSRF-TOKEN', R.csrf || '');
@@ -1162,6 +1206,8 @@
       if (xhr.status >= 200 && xhr.status < 300) {
         const data = JSON.parse(xhr.responseText);
         msg.id = 'db' + data.message.id; msg.uploading = false; msg.status = 'sent';
+        const va = (data.message.attachments || [])[0];
+        if (va?.url) msg.voice = { src: va.url, dur: msg.voice.dur };
         if (c.id === activeId) renderThread(c);
       } else { msg.uploading = false; msg.uploadFailed = true; msg.status = 'failed'; if (c.id === activeId) renderThread(c); }
     };
@@ -1683,7 +1729,11 @@
         if (msg.parent_id) cp.reply = 'db' + msg.parent_id;
         if (msg.forwarded_from_id) cp.forwarded = true;
         if (msg.type === 'system') cp.system = true;
-        if (msg.type === 'voice') { cp.voice = '0:30'; delete cp.text; }
+        if (msg.type === 'voice') {
+          const va = (msg.attachments || [])[0];
+          cp.voice = { src: va?.url, dur: msg.body || null };
+          delete cp.text;
+        }
         if (msg.attachments && msg.attachments.length) {
           const imgAtts = msg.attachments.filter(a => a.file_type && a.file_type.startsWith('image/'));
           const fileAtts = msg.attachments.filter(a => !(a.file_type && a.file_type.startsWith('image/')));
@@ -1830,6 +1880,11 @@
   }
 
   function boot() {
+    // Apply the user's appearance preferences to the document
+    if (me.prefs) {
+      document.documentElement.dataset.fontSize = me.prefs.fontSize || 'md';
+      document.documentElement.dataset.bubble = me.prefs.bubbleStyle || 'modern';
+    }
     initDark(); initRail(); initComposer(); initNet(); initThreadSearch(); initHeartbeat();
     listSkeleton(); threadSkeleton();
     setTimeout(() => {

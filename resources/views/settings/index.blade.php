@@ -115,22 +115,28 @@
                 <label class="sset-switch"><input type="checkbox" id="darkTogglePage" {{ $u->dark_mode?'checked':'' }}><span class="sset-knob"></span></label>
             </div>
         </div>
+        <form id="appearanceForm">
         <div class="sset-card" style="margin-top:10px">
             <p class="sset-card-lbl">Chat Bubble Style</p>
             <div class="sset-choices">
-                <label class="sset-choice on"><input type="radio" name="bubble" value="modern" checked><span>Modern</span></label>
-                <label class="sset-choice"><input type="radio" name="bubble" value="classic"><span>Classic</span></label>
-                <label class="sset-choice"><input type="radio" name="bubble" value="minimal"><span>Minimal</span></label>
+                @foreach(['modern'=>'Modern','classic'=>'Classic','minimal'=>'Minimal'] as $k=>$lbl)
+                <label class="sset-choice {{ ($u->bubble_style??'modern')===$k?'on':'' }}"><input type="radio" name="bubble_style" value="{{ $k }}" {{ ($u->bubble_style??'modern')===$k?'checked':'' }}><span>{{ $lbl }}</span></label>
+                @endforeach
             </div>
         </div>
         <div class="sset-card" style="margin-top:10px">
             <p class="sset-card-lbl">Font Size</p>
             <div class="sset-choices">
-                <label class="sset-choice"><input type="radio" name="font_sz" value="sm"><span>Small</span></label>
-                <label class="sset-choice on"><input type="radio" name="font_sz" value="md" checked><span>Medium</span></label>
-                <label class="sset-choice"><input type="radio" name="font_sz" value="lg"><span>Large</span></label>
+                @foreach(['sm'=>'Small','md'=>'Medium','lg'=>'Large'] as $k=>$lbl)
+                <label class="sset-choice {{ ($u->font_size??'md')===$k?'on':'' }}"><input type="radio" name="font_size" value="{{ $k }}" {{ ($u->font_size??'md')===$k?'checked':'' }}><span>{{ $lbl }}</span></label>
+                @endforeach
             </div>
         </div>
+        <div class="sset-actions">
+            <button type="submit" class="sset-btn">Save Appearance</button>
+            <span class="sset-ok" id="appearanceOk">✓ Saved</span>
+        </div>
+        </form>
     </section>
 
     {{-- NOTIFICATIONS --}}
@@ -145,12 +151,12 @@
                 <div class="sset-sep"></div>
                 <div class="sset-toggle-row">
                     <div><p class="sset-tl">Message Previews</p><p class="sset-ts">Show message text in notifications</p></div>
-                    <label class="sset-switch"><input type="checkbox" checked><span class="sset-knob"></span></label>
+                    <label class="sset-switch"><input type="checkbox" name="message_previews" {{ $u->message_previews?'checked':'' }}><span class="sset-knob"></span></label>
                 </div>
                 <div class="sset-sep"></div>
                 <div class="sset-toggle-row">
                     <div><p class="sset-tl">Sound Alerts</p><p class="sset-ts">Play a sound on new messages</p></div>
-                    <label class="sset-switch"><input type="checkbox" checked><span class="sset-knob"></span></label>
+                    <label class="sset-switch"><input type="checkbox" name="sound_alerts" {{ $u->sound_alerts?'checked':'' }}><span class="sset-knob"></span></label>
                 </div>
             </div>
             <div class="sset-card" style="margin-top:10px">
@@ -173,29 +179,35 @@
     {{-- PRIVACY --}}
     <section class="sset-sec" id="sec-privacy" style="display:none">
         <div class="sset-sec-header"><h2>Privacy</h2><p>Manage your visibility and data</p></div>
+        <form id="privacyForm">
         <div class="sset-card">
             <div class="sset-toggle-row">
                 <div><p class="sset-tl">Read Receipts</p><p class="sset-ts">Let others know when you've read their messages</p></div>
-                <label class="sset-switch"><input type="checkbox" checked><span class="sset-knob"></span></label>
+                <label class="sset-switch"><input type="checkbox" name="read_receipts" {{ $u->read_receipts?'checked':'' }}><span class="sset-knob"></span></label>
             </div>
             <div class="sset-sep"></div>
             <div class="sset-toggle-row">
                 <div><p class="sset-tl">Online Status</p><p class="sset-ts">Show when you're active to others</p></div>
-                <label class="sset-switch"><input type="checkbox" checked><span class="sset-knob"></span></label>
+                <label class="sset-switch"><input type="checkbox" name="show_online_status" {{ $u->show_online_status?'checked':'' }}><span class="sset-knob"></span></label>
             </div>
             <div class="sset-sep"></div>
             <div class="sset-toggle-row">
                 <div><p class="sset-tl">Typing Indicator</p><p class="sset-ts">Show "typing…" to others while you type</p></div>
-                <label class="sset-switch"><input type="checkbox" checked><span class="sset-knob"></span></label>
+                <label class="sset-switch"><input type="checkbox" name="show_typing" {{ $u->show_typing?'checked':'' }}><span class="sset-knob"></span></label>
             </div>
         </div>
         <div class="sset-card" style="margin-top:10px">
             <p class="sset-card-lbl">Who can message you</p>
             <div class="sset-choices" style="margin-top:10px">
-                <label class="sset-choice on"><input type="radio" name="who_msg" value="everyone" checked><span>Everyone</span></label>
-                <label class="sset-choice"><input type="radio" name="who_msg" value="contacts"><span>Contacts only</span></label>
+                <label class="sset-choice {{ ($u->who_can_message??'everyone')==='everyone'?'on':'' }}"><input type="radio" name="who_can_message" value="everyone" {{ ($u->who_can_message??'everyone')==='everyone'?'checked':'' }}><span>Everyone</span></label>
+                <label class="sset-choice {{ ($u->who_can_message??'')==='contacts'?'on':'' }}"><input type="radio" name="who_can_message" value="contacts" {{ ($u->who_can_message??'')==='contacts'?'checked':'' }}><span>Contacts only</span></label>
             </div>
         </div>
+        <div class="sset-actions">
+            <button type="submit" class="sset-btn">Save Privacy</button>
+            <span class="sset-ok" id="privacyOk">✓ Saved</span>
+        </div>
+        </form>
     </section>
 
     {{-- ACCOUNT --}}
@@ -290,6 +302,22 @@ document.getElementById('notifForm')?.addEventListener('submit', async e => {
     const fd = new FormData(e.target);
     await fetch('{{ route('settings.notifications') }}', { method:'PATCH', body:fd, headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'} }).catch(()=>{});
     flash('notifOk');
+});
+
+// Privacy
+document.getElementById('privacyForm')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target); fd.append('_method','PATCH');
+    await fetch('{{ route('settings.privacy') }}', { method:'POST', body:fd, headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'} }).catch(()=>{});
+    flash('privacyOk');
+});
+
+// Appearance
+document.getElementById('appearanceForm')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target); fd.append('_method','PATCH');
+    await fetch('{{ route('settings.appearance') }}', { method:'POST', body:fd, headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'} }).catch(()=>{});
+    flash('appearanceOk');
 });
 
 // Password

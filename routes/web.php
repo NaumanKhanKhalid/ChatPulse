@@ -71,6 +71,8 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
     Route::patch('/groups/{conversation}', [GroupController::class, 'update'])->name('groups.update');
     Route::post('/groups/{conversation}/join', [GroupController::class, 'join'])->name('groups.join');
     Route::post('/groups/{conversation}/leave', [GroupController::class, 'leave'])->name('groups.leave');
+    Route::post('/groups/{conversation}/members', [GroupController::class, 'addMembers'])->name('groups.members.add');
+    Route::delete('/groups/{conversation}/members/{user}', [GroupController::class, 'removeMember'])->name('groups.members.remove');
     Route::post('/groups/{conversation}/invite', [GroupController::class, 'generateInvite'])->name('groups.invite');
     Route::get('/invite/{token}', [GroupController::class, 'joinViaInvite'])->name('groups.join-invite');
 
@@ -100,6 +102,8 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::patch('/settings/dark-mode', [SettingController::class, 'toggleDarkMode'])->name('settings.dark-mode');
         Route::patch('/settings/notifications', [SettingController::class, 'updateNotifications'])->name('settings.notifications');
+        Route::patch('/settings/privacy', [SettingController::class, 'updatePrivacy'])->name('settings.privacy');
+        Route::patch('/settings/appearance', [SettingController::class, 'updateAppearance'])->name('settings.appearance');
         Route::patch('/settings/password', [SettingController::class, 'updatePassword'])->name('settings.password');
     });
 

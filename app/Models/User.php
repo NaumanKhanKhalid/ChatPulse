@@ -15,6 +15,8 @@ class User extends Authenticatable
         'status_type','status_emoji','status_clears_at','role','permissions','is_online',
         'last_seen_at','is_guest','is_banned','banned_at','banned_reason',
         'dark_mode','email_notifications','email_digest',
+        'read_receipts','show_online_status','show_typing','who_can_message',
+        'message_previews','sound_alerts','font_size','bubble_style',
     ];
 
     /** Granular permissions — key => [label, default]. Guests get restricted defaults. */
@@ -41,6 +43,11 @@ class User extends Authenticatable
             'banned_at' => 'datetime',
             'status_clears_at' => 'datetime',
             'permissions' => 'array',
+            'read_receipts' => 'boolean',
+            'show_online_status' => 'boolean',
+            'show_typing' => 'boolean',
+            'message_previews' => 'boolean',
+            'sound_alerts' => 'boolean',
         ];
     }
 

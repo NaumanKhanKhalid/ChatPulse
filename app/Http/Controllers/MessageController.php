@@ -26,6 +26,18 @@ class MessageController extends Controller
         $user = auth()->user();
         $data = $request->validated();
 
+        // Respect the recipient's "who can message me" setting on direct chats
+        if ($conversation->type === 'direct') {
+            $peer = $conversation->users->firstWhere('id', '!=', $user->id)
+                ?? $conversation->participants()->where('user_id', '!=', $user->id)->first()?->user;
+            if ($peer && $peer->who_can_message === 'contacts') {
+                $hasHistory = $conversation->messages()->where('user_id', $peer->id)->exists();
+                if (!$hasHistory) {
+                    return response()->json(['error' => $peer->name . ' only accepts messages from people they have talked to.'], 403);
+                }
+            }
+        }
+
         if ($request->hasFile('attachments') && !$user->hasPerm('can_upload_files')) {
             return response()->json(['error' => 'You do not have permission to upload files.'], 403);
         }

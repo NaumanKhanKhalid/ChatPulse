@@ -35,6 +35,14 @@ class ConversationController extends Controller
 
         $me = $this->userToCP($user);
         $me['role'] = $user->role ?? 'user';
+        $me['prefs'] = [
+            'readReceipts' => (bool) $user->read_receipts,
+            'showTyping'   => (bool) $user->show_typing,
+            'soundAlerts'  => (bool) $user->sound_alerts,
+            'previews'     => (bool) $user->message_previews,
+            'fontSize'     => $user->font_size ?? 'md',
+            'bubbleStyle'  => $user->bubble_style ?? 'modern',
+        ];
 
         $scheduled = Message::where('user_id', $user->id)
             ->where('is_scheduled', true)
@@ -131,8 +139,8 @@ class ConversationController extends Controller
             'statusMsg'=> $u->status_message ?? '',
             'bio'      => $u->bio ?? '',
             'joined'   => $u->created_at?->format('M Y'),
-            'online'   => (bool)$u->is_online,
-            'last'     => ($u->last_seen_at && !$u->is_online) ? $u->last_seen_at->diffForHumans() : null,
+            'online'   => (bool)($u->is_online && $u->show_online_status),
+            'last'     => ($u->show_online_status && $u->last_seen_at && !$u->is_online) ? $u->last_seen_at->diffForHumans() : null,
             'guest'    => (bool)$u->is_guest,
             'role'     => $u->role ?? 'user',
         ];
@@ -259,7 +267,8 @@ class ConversationController extends Controller
         if ($m->parent_id)          $msg['reply']     = 'db'.$m->parent_id;
 
         if ($m->type === 'voice') {
-            $msg['voice'] = '0:30';
+            $att = $m->attachments->first();
+            $msg['voice'] = ['src' => $att?->url, 'dur' => $m->body ?: null];
             unset($msg['text']);
         }
 
@@ -285,9 +294,12 @@ class ConversationController extends Controller
         $this->authorizeParticipant($conversation);
         $user = auth()->user();
         $messageService->markConversationAsRead($conversation, $user);
-        try {
-            broadcast(new \App\Events\ConversationRead($conversation->id, $user->id));
-        } catch (\Throwable) {}
+        // Honour the reader's privacy setting — no receipt if they turned it off
+        if ($user->read_receipts) {
+            try {
+                broadcast(new \App\Events\ConversationRead($conversation->id, $user->id));
+            } catch (\Throwable) {}
+        }
         return response()->json(['success' => true]);
     }
 
