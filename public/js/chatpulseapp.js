@@ -50,7 +50,7 @@
       const dot = (c.type === 'direct' && m.online) ? `<span class="pres" style="background:${statusColor[m.status] || '#10b981'}"></span>` : '';
       // Ticks only when the LAST message is mine (like WhatsApp)
       const lastMine = (c.last || '').startsWith('You:');
-      const atBadge = (unread && c.mention) ? `<span class="at-badge" title="You were mentioned">@</span>` : '';
+      const atBadge = (unread && c.mention) ? `<span class="at-badge" data-mentions title="You were mentioned — click to see">@</span>` : '';
       const badge = unread ? `${atBadge}<span class="badge">${c.unread}</span>` : ((c.read && lastMine) ? `<svg class="ticks read" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m3 13 3.2 3.2L13 9.5M11 13l3 3 7-7.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>` : '');
       const typing = c.typing ? `<span class="typing-mini"><span class="d"></span><span class="d"></span><span class="d"></span></span>` : esc(c.last || '');
       const muted = c.muted ? `<svg class="muted-ico" width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 4V5L8 9H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m17 9 4 6m0-6-4 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>` : '';
@@ -70,6 +70,7 @@
       b.addEventListener('contextmenu', e => { e.preventDefault(); convoMenu(conversations.find(x => x.id === b.dataset.convo), b); });
     });
     $$('[data-cmenu]', wrap).forEach(b => b.addEventListener('click', e => { e.stopPropagation(); convoMenu(conversations.find(x => x.id === b.dataset.cmenu), b); }));
+    $$('[data-mentions]', wrap).forEach(b => b.addEventListener('click', e => { e.stopPropagation(); CPOverlays?.openNotifications(b); }));
   }
 
   /* ---------- list views: People / Scheduled ---------- */
@@ -1756,6 +1757,8 @@
         if (!reading) {
           c.unread = (c.unread || 0) + 1;
           if (!c.firstUnreadId) c.firstUnreadId = cp.id; // mark where new messages start
+          playPing();
+          if (document.hidden) desktopNotify(users[msg.user_id]?.name || 'New message', msg.body, c.id);
         }
         // Only mark read if this conversation is active AND the tab is visible
         if (c.id === activeId) {
@@ -1864,6 +1867,46 @@
     renderPanel(c);
   }
 
+  /* ---------- alerts for incoming messages (respects Settings → Notifications) ---------- */
+  let _audioCtx = null;
+  function playPing() {
+    if (me.prefs && me.prefs.soundAlerts === false) return;
+    try {
+      _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (_audioCtx.state === 'suspended') _audioCtx.resume();
+      // short two-tone chirp — no asset needed
+      const t = _audioCtx.currentTime;
+      [880, 1320].forEach((freq, i) => {
+        const osc = _audioCtx.createOscillator(), gain = _audioCtx.createGain();
+        osc.type = 'sine'; osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t + i * 0.09);
+        gain.gain.exponentialRampToValueAtTime(0.16, t + i * 0.09 + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.09 + 0.13);
+        osc.connect(gain).connect(_audioCtx.destination);
+        osc.start(t + i * 0.09); osc.stop(t + i * 0.09 + 0.15);
+      });
+    } catch (e) {}
+  }
+
+  function desktopNotify(senderName, body, convId) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const preview = (me.prefs && me.prefs.previews === false) ? 'New message' : (body || 'Sent an attachment');
+    try {
+      const n = new Notification(senderName, { body: preview, tag: 'cp-' + convId, silent: true });
+      n.onclick = () => { window.focus(); selectConvo(convId); n.close(); };
+    } catch (e) {}
+  }
+
+  function initAlerts() {
+    // Ask once, only after the user has interacted (browsers require a gesture)
+    if ('Notification' in window && Notification.permission === 'default') {
+      document.addEventListener('click', function ask() {
+        Notification.requestPermission().catch(() => {});
+        document.removeEventListener('click', ask);
+      }, { once: true });
+    }
+  }
+
   function markConvRead(c) {
     const url = (R.markRead || '/conversations/{conv}/read').replace('{conv}', convDbId(c));
     apiPost(url, {}).catch(() => {});
@@ -1885,7 +1928,7 @@
       document.documentElement.dataset.fontSize = me.prefs.fontSize || 'md';
       document.documentElement.dataset.bubble = me.prefs.bubbleStyle || 'modern';
     }
-    initDark(); initRail(); initComposer(); initNet(); initThreadSearch(); initHeartbeat();
+    initDark(); initRail(); initComposer(); initNet(); initThreadSearch(); initHeartbeat(); initAlerts();
     listSkeleton(); threadSkeleton();
     setTimeout(() => {
       initReverb();
