@@ -15,6 +15,10 @@ Broadcast::channel('call.{callId}', function ($user, $callId) {
         ->where('user_id', $user->id)->exists();
 });
 
+Broadcast::channel('admin.activity', function ($user) {
+    return $user->isAdmin();
+});
+
 Broadcast::channel('app', function ($user) {
     return ['id' => $user->id, 'name' => $user->name, 'avatar_url' => $user->avatar_url];
 });

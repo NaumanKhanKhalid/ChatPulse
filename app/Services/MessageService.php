@@ -51,6 +51,8 @@ class MessageService
             }
             // Run inline (a few DB inserts) so notifications work without a queue worker
             try { NotifyParticipantsJob::dispatchSync($message); } catch (\Throwable) {}
+            \App\Events\AdminActivity::fire('message', $user, 'sent a message in',
+                $conversation->isGroup() ? ($conversation->name ?? 'a group') : 'a direct message');
 
             // Check for URLs and fetch link previews
             if ($body && preg_match_all('/https?:\/\/[^\s]+/', $body, $matches)) {

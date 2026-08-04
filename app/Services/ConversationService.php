@@ -53,6 +53,7 @@ class ConversationService
             }
         }
 
+        \App\Events\AdminActivity::fire('group', $user, 'created the group', $conversation->name);
         return $conversation;
     }
 

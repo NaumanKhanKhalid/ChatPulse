@@ -59,6 +59,7 @@ class ReportController extends Controller
         ]);
 
         AdminLog::record('report.ban', 'user', $user->id, $user->name, 'via report #' . $report->id);
+        \App\Events\AdminActivity::fire('report', auth()->user(), 'banned via report', $user->name);
         return back()->with('success', "{$user->name} banned and report closed.");
     }
 }
