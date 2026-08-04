@@ -46,6 +46,12 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
     Route::post('/conversations/{conversation}/read', [ConversationController::class, 'markRead'])->name('conversations.read');
     Route::post('/conversations/direct', [ConversationController::class, 'startDirect'])->name('conversations.direct');
 
+    // Per-user conversation preferences
+    Route::patch('/conversations/{conversation}/prefs', [\App\Http\Controllers\ConversationPrefController::class, 'update'])->name('conversations.prefs');
+    Route::post('/conversations/{conversation}/unread', [\App\Http\Controllers\ConversationPrefController::class, 'markUnread'])->name('conversations.unread');
+    Route::post('/conversations/{conversation}/clear', [\App\Http\Controllers\ConversationPrefController::class, 'clear'])->name('conversations.clear');
+    Route::delete('/conversations/{conversation}', [\App\Http\Controllers\ConversationPrefController::class, 'destroy'])->name('conversations.destroy');
+
     // Messages
     Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store'])->name('messages.store')->middleware('throttle:messages');
     Route::patch('/messages/{message}', [MessageController::class, 'update'])->name('messages.update');

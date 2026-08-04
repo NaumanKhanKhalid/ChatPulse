@@ -299,9 +299,22 @@ window.CPOverlays = (function () {
       ov.querySelectorAll('#egVis [data-vis]').forEach(b => b.addEventListener('click', () => { pub = b.dataset.vis === 'public'; ov.querySelectorAll('#egVis .vis-opt').forEach(x => x.classList.toggle('on', x === b)); }));
       ov.querySelector('#egSave').addEventListener('click', () => {
         const nm = egName.value.trim() || g.name;
-        g.name = nm; g.initials = nm.slice(0, 2).toUpperCase(); g.desc = ov.querySelector('#egDesc').value.trim(); g.grad = grad; g.pub = pub;
-        if (conv) { conv.name = g.name; conv.initials = g.initials; conv.desc = g.desc; conv.grad = grad; conv.public = pub; }
-        paint(); M().toast('Group updated'); notify();
+        const desc = ov.querySelector('#egDesc').value.trim();
+        const apply = () => {
+          g.name = nm; g.initials = nm.slice(0, 2).toUpperCase(); g.desc = desc; g.grad = grad; g.pub = pub;
+          if (conv) { conv.name = g.name; conv.initials = g.initials; conv.desc = g.desc; conv.grad = grad; conv.public = pub; }
+          paint(); M().toast('Group updated'); notify();
+        };
+        if (!groupDbId()) { apply(); return; }
+        const R2 = window.CP_ROUTES || {};
+        fetch((R2.groupUpdate || '/groups/{conv}').replace('{conv}', groupDbId()), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': R2.csrf || '', 'Accept': 'application/json' },
+          body: JSON.stringify({ name: nm, description: desc, is_private: !pub }),
+        })
+          .then(r => { if (!r.ok) throw new Error(); return r.json().catch(() => ({})); })
+          .then(apply)
+          .catch(() => M().toast('Could not save the group', true));
       });
     }
 

@@ -16,15 +16,26 @@ class ExportController extends Controller
             return response()->json(['error' => 'Access denied.'], 403);
         }
 
-        ExportChatJob::dispatch(
-            $conversation,
-            auth()->id(),
-            $request->format,
-            $request->from,
-            $request->to
-        );
+        // Run inline so the download link comes straight back — this app has no
+        // queue worker running by default, and a queued export never completed.
+        try {
+            ExportChatJob::dispatchSync(
+                $conversation,
+                auth()->id(),
+                $request->format,
+                $request->from,
+                $request->to
+            );
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Export failed: ' . $e->getMessage()], 500);
+        }
 
-        return response()->json(['message' => 'Export started. You will be notified when ready.']);
+        $latest = \Illuminate\Support\Facades\Cache::pull('export_url:' . auth()->id());
+
+        return response()->json([
+            'message'      => $latest ? 'Export ready.' : 'Export started.',
+            'download_url' => $latest,
+        ]);
     }
 
     public function download(Request $request): mixed

@@ -36,6 +36,7 @@ class ExportChatJob implements ShouldQueue
         }
 
         $downloadUrl = route('exports.download', ['path' => base64_encode($path)]);
+        \Illuminate\Support\Facades\Cache::put('export_url:' . $this->userId, $downloadUrl, now()->addMinutes(10));
         try { broadcast(new ExportReady($this->userId, $downloadUrl, $this->format)); } catch (\Throwable) { /* Reverb offline — realtime skipped */ }
     }
 
