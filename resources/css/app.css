@@ -1235,3 +1235,12 @@ html:not(.dark) .call-ov { background: radial-gradient(120% 100% at 50% 0%, #134
 .call-btn { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--text3); background: var(--input); transition: background .12s, color .12s; }
 .call-btn:hover { background: var(--primary-light); color: var(--primary-dark); }
 html.dark .call-btn:hover { background: rgba(16,185,129,.16); color: #6ee7b7; }
+
+/* call media elements */
+.call-remote video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 1; }
+.call-remote video.show { display: block; }
+.call-poster { position: relative; z-index: 2; text-align: center; }
+.call-poster.behind { z-index: 0; }
+.call-self video { width: 100%; height: 100%; object-fit: cover; display: none; }
+.call-self video.show { display: block; }
+.call-self-off { display: grid; place-items: center; width: 100%; height: 100%; background: linear-gradient(135deg,#334155,#0f172a); }
