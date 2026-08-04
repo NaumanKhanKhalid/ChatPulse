@@ -267,7 +267,8 @@ class ConversationController extends Controller
         if ($m->parent_id)          $msg['reply']     = 'db'.$m->parent_id;
 
         if ($m->type === 'voice') {
-            $msg['voice'] = '0:30';
+            $att = $m->attachments->first();
+            $msg['voice'] = ['src' => $att?->url, 'dur' => $m->body ?: null];
             unset($msg['text']);
         }
 
