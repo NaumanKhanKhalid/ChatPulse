@@ -592,7 +592,7 @@
       // Calls disabled for now
       // $('#qCall')?.addEventListener('click', () => CPOverlays.openCall(peer, 'audio', true, c.id));
       // $('#qVideo')?.addEventListener('click', () => CPOverlays.openCall(peer, 'video', true, c.id));
-      $('#ppMute')?.addEventListener('click', () => { c.muted = !c.muted; toast(c.muted ? 'Notifications muted' : 'Notifications unmuted'); renderPanel(c); renderList($('#search').value); });
+      $('#ppMute')?.addEventListener('click', () => { c.muted = !c.muted; toast(c.muted ? 'Notifications muted' : 'Notifications unmuted'); renderPanel(c); renderList($('#search').value); convPref(c, { muted: c.muted }); });
       $('#ppBlock')?.addEventListener('click', () => CPModals.openReport({ kind: 'user', name: peer.name }, res => {
         if (res.block) blockedUsers.add(peer.id);
         submitReport({ reason: res.reason, note: res.note, user_id: peer.id });
@@ -1713,20 +1713,72 @@
     $('#threadSearchInput').addEventListener('keydown', e => { if (e.key === 'Enter') focusHit(tsIndex + (e.shiftKey ? -1 : 1)); if (e.key === 'Escape') closeThreadSearch(); });
   }
 
+  /* ---------- conversation preferences (persisted) ---------- */
+  function convPref(c, patch) {
+    const url = (R.convPrefs || '/conversations/{conv}/prefs').replace('{conv}', convDbId(c));
+    fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json' },
+      body: JSON.stringify(patch),
+    }).catch(() => toast('Could not save that change', true));
+  }
+  function convAction(c, routeKey, fallback, method) {
+    const url = (R[routeKey] || fallback).replace('{conv}', convDbId(c));
+    return fetch(url, {
+      method: method || 'POST',
+      headers: { 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json' },
+    }).then(r => { if (!r.ok) throw new Error(); return r; });
+  }
+
   /* ---------- sidebar conversation context menu ---------- */
   function convoMenu(c, anchor) {
     const items = [
-      { ic: c.pinned ? 'unpin' : 'pin', label: c.pinned ? 'Unpin chat' : 'Pin chat', fn: () => { c.pinned = !c.pinned; sortConvos(); renderList($('#search').value); toast(c.pinned ? 'Chat pinned' : 'Chat unpinned'); } },
-      { ic: 'star', label: c.fav ? 'Remove favourite' : 'Add to favourites', fn: () => { c.fav = !c.fav; renderList($('#search').value); toast(c.fav ? 'Added to favourites' : 'Removed from favourites'); } },
-      { ic: c.unread ? 'read' : 'unread', label: c.unread ? 'Mark as read' : 'Mark as unread', fn: () => { c.unread = c.unread ? 0 : 1; c.read = !c.unread ? true : c.read; renderList($('#search').value); } },
-      { ic: 'bell', label: c.muted ? 'Unmute' : 'Mute notifications', fn: () => { c.muted = !c.muted; renderList($('#search').value); toast(c.muted ? 'Muted' : 'Unmuted'); } },
-      { ic: 'archive', label: 'Archive chat', fn: () => { c.archived = true; if (activeId === c.id) showWelcome(); renderList($('#search').value); toast('Chat archived'); } },
+      { ic: c.pinned ? 'unpin' : 'pin', label: c.pinned ? 'Unpin chat' : 'Pin chat', fn: () => { c.pinned = !c.pinned; sortConvos(); renderList($('#search').value); toast(c.pinned ? 'Chat pinned' : 'Chat unpinned'); convPref(c, { pinned: c.pinned }); } },
+      { ic: 'star', label: c.fav ? 'Remove favourite' : 'Add to favourites', fn: () => { c.fav = !c.fav; renderList($('#search').value); toast(c.fav ? 'Added to favourites' : 'Removed from favourites'); convPref(c, { favourite: c.fav }); } },
+      { ic: c.unread ? 'read' : 'unread', label: c.unread ? 'Mark as read' : 'Mark as unread', fn: () => {
+          const nowUnread = !c.unread;
+          c.unread = nowUnread ? 1 : 0; c.read = !nowUnread;
+          renderList($('#search').value);
+          if (nowUnread) convAction(c, 'convUnread', '/conversations/{conv}/unread').catch(() => {});
+          else markConvRead(c);
+        } },
+      { ic: 'bell', label: c.muted ? 'Unmute' : 'Mute notifications', fn: () => { c.muted = !c.muted; renderList($('#search').value); toast(c.muted ? 'Muted' : 'Unmuted'); convPref(c, { muted: c.muted }); } },
+      { ic: 'archive', label: 'Archive chat', fn: () => { c.archived = true; if (activeId === c.id) showWelcome(); renderList($('#search').value); toast('Chat archived'); convPref(c, { archived: true }); } },
       { sep: true },
-      { ic: 'eraser', label: 'Clear messages', fn: () => confirmAction('Clear all messages?', 'This empties the conversation but keeps the chat.', () => { c.messages = []; c.last = ''; if (activeId === c.id) renderThread(c); renderList($('#search').value); toast('Messages cleared'); }) },
-      { ic: 'trash', label: 'Delete chat', danger: true, fn: () => confirmAction('Delete this chat?', 'This permanently removes the conversation for you.', () => { const i = conversations.indexOf(c); conversations.splice(i, 1); if (activeId === c.id) { if (conversations[0]) selectConvo(conversations[0].id); else showWelcome(); } renderList($('#search').value); toast('Chat deleted'); }) },
+      { ic: 'file', label: 'Export chat', fn: () => exportChat(c) },
+      { ic: 'eraser', label: 'Clear messages', fn: () => confirmAction('Clear all messages?', 'This empties the conversation for you. Other people keep their copy.', () => {
+          convAction(c, 'convClear', '/conversations/{conv}/clear')
+            .then(() => { c.messages = []; c.last = ''; if (activeId === c.id) renderThread(c); renderList($('#search').value); toast('Messages cleared'); })
+            .catch(() => toast('Could not clear the chat', true));
+        }) },
+      { ic: 'trash', label: 'Delete chat', danger: true, fn: () => confirmAction('Delete this chat?', 'This removes the conversation for you. Other people keep theirs.', () => {
+          convAction(c, 'convDelete', '/conversations/{conv}', 'DELETE')
+            .then(() => {
+              const i = conversations.indexOf(c); if (i > -1) conversations.splice(i, 1);
+              if (activeId === c.id) { if (conversations[0]) selectConvo(conversations[0].id); else showWelcome(); }
+              renderList($('#search').value); toast('Chat deleted');
+            })
+            .catch(() => toast('Could not delete the chat', true));
+        }) },
     ];
     popMenu(anchor, items);
   }
+  function exportChat(c) {
+    const url = (R.exportChat || '/conversations/{conv}/export').replace('{conv}', convDbId(c));
+    toast('Preparing export…');
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json' },
+      body: JSON.stringify({ format: 'csv' }),
+    })
+      .then(r => r.json().catch(() => ({})).then(b => { if (!r.ok) throw new Error(b.error || 'Failed'); return b; }))
+      .then(data => {
+        if (data.download_url) { window.location.href = data.download_url; toast('Export ready'); }
+        else toast('Export queued — you will get a link shortly');
+      })
+      .catch(() => toast('Could not export this chat', true));
+  }
+
   function sortConvos() { conversations.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)); }
   function confirmAction(title, body, onYes) {
     closePops();

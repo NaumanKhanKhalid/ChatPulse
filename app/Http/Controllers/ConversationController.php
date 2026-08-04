@@ -98,6 +98,12 @@ class ConversationController extends Controller
             'notifReadAll' => route('notifications.read-all'),
             'feedback'     => route('feedback.store'),
             'report'       => route('reports.store'),
+            'convPrefs'    => url('/conversations/{conv}/prefs'),
+            'convUnread'   => url('/conversations/{conv}/unread'),
+            'convClear'    => url('/conversations/{conv}/clear'),
+            'convDelete'   => url('/conversations/{conv}'),
+            'groupUpdate'  => url('/groups/{conv}'),
+            'exportChat'   => url('/conversations/{conv}/export'),
             'csrf'         => csrf_token(),
             'iceServers'   => $this->iceServers(),
         ]);
@@ -171,7 +177,11 @@ class ConversationController extends Controller
         $otherReads = $c->participants()->where('user_id', '!=', $user->id)->pluck('last_read_at');
         $othersReadAt = ($otherReads->count() && !$otherReads->contains(null)) ? $otherReads->min() : null;
 
+        $participant = $c->participants()->where('user_id', $user->id)->first();
+        $clearedAt   = $participant?->cleared_at;
+
         $messages = $c->messages()
+            ->when($clearedAt, fn($q) => $q->where('created_at', '>', $clearedAt))
             ->with(['user','reactions','parent.user','attachments'])
             ->orderBy('created_at','asc')
             ->take(60)
@@ -179,7 +189,6 @@ class ConversationController extends Controller
             ->map(fn($m) => $this->msgToCP($m, $user, $othersReadAt, $pinnedRaw))
             ->values()->all();
 
-        $participant   = $c->participants()->where('user_id', $user->id)->first();
         $firstUnreadId = null;
         if ($participant && $participant->last_read_at) {
             $fu = $c->messages()
@@ -221,6 +230,9 @@ class ConversationController extends Controller
             'time'         => $lastMsg ? $lastMsg->created_at->format('g:i A') : '',
             'last'         => $lastText,
             'muted'        => (bool)($participant?->is_muted ?? false),
+            'pinned'       => (bool)($participant?->is_pinned ?? false),
+            'fav'          => (bool)($participant?->is_favourite ?? false),
+            'archived'     => (bool)($participant?->is_archived ?? false),
             'pinnedIds'    => $pinnedIds,
             'mention'      => $mentioned,
             'firstUnreadId'=> $firstUnreadId,
