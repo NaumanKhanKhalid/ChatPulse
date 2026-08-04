@@ -56,6 +56,43 @@
     <div class="adm-trend" id="trendChart"><p class="adm-empty">Loading history…</p></div>
 </div>
 
+{{-- Top groups + live activity feed --}}
+<div class="adm-grid2" style="margin-bottom:16px">
+    <div class="adm-card">
+        <div class="adm-card-head"><h3>Top groups</h3><span class="adm-card-sub">by message volume</span></div>
+        @php $gmax = max(1, $topGroups->max('messages_count') ?? 1); @endphp
+        @forelse($topGroups as $tg)
+        @php $tgi = collect(explode(' ', $tg->name ?? 'G'))->map(fn($w)=>strtoupper(substr($w,0,1)))->take(2)->join(''); @endphp
+        <div class="adm-topg">
+            <div class="avatar" style="width:32px;height:32px;background:linear-gradient(135deg,#818cf8,#7c3aed);font-size:12px">{{ $tgi }}</div>
+            <span class="adm-topg-name">{{ \Illuminate\Support\Str::limit($tg->name ?? 'Unnamed', 22) }}</span>
+            <div class="adm-topg-bar"><span style="width:{{ round($tg->messages_count / $gmax * 100) }}%"></span></div>
+            <span class="adm-topg-n">{{ $tg->messages_count }}</span>
+        </div>
+        @empty
+        <p class="adm-empty">No groups yet.</p>
+        @endforelse
+    </div>
+
+    <div class="adm-card">
+        <div class="adm-card-head">
+            <h3>Live activity <span class="adm-live-dot" title="Streaming over WebSocket"></span></h3>
+            <span class="adm-card-sub" id="feedStatus">real-time</span>
+        </div>
+        <div class="adm-feed" id="activityFeed">
+            @forelse($seedFeed as $f)
+            <div class="adm-feed-row">
+                <div class="avatar" style="width:30px;height:30px;background:linear-gradient(135deg,{{ $f['grad'][0] }},{{ $f['grad'][1] }});font-size:11px">{{ $f['initials'] }}</div>
+                <span class="adm-feed-tx"><b>{{ $f['actor'] }}</b> {{ $f['text'] }} <i>{{ $f['target'] }}</i></span>
+                <span class="adm-feed-at">{{ $f['at'] }}</span>
+            </div>
+            @empty
+            <p class="adm-empty" id="feedEmpty">Waiting for activity…</p>
+            @endforelse
+        </div>
+    </div>
+</div>
+
 <div class="adm-grid2" style="margin-bottom:16px">
     {{-- Live online users (WebSocket presence) --}}
     <div class="adm-card">
@@ -213,6 +250,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
         })
         .catch(() => { $id('trendChart').innerHTML = '<p class="adm-empty">Could not load history.</p>'; });
+
+    /* ---- Live activity feed over the private admin channel ---- */
+    function initFeed() {
+        if (!window.Echo) { setTimeout(initFeed, 500); return; }
+        const feed = $id('activityFeed');
+        const TONE = { message:'#8b5cf6', login:'#10b981', failed:'#ef4444', signup:'#3b82f6', group:'#f59e0b', report:'#ef4444', ban:'#ef4444', call:'#06b6d4' };
+        window.Echo.private('admin.activity').listen('AdminActivity', e => {
+            $id('feedEmpty')?.remove();
+            const row = document.createElement('div');
+            row.className = 'adm-feed-row fresh';
+            row.style.setProperty('--tone', TONE[e.kind] || 'var(--text3)');
+            row.innerHTML = `<div class="avatar" style="width:30px;height:30px;background:linear-gradient(135deg,${e.grad[0]},${e.grad[1]});font-size:11px">${e.initials}</div>`
+                + `<span class="adm-feed-tx"><b>${e.actor}</b> ${e.text} <i>${e.target || ''}</i></span>`
+                + `<span class="adm-feed-at">just now</span>`;
+            feed.prepend(row);
+            while (feed.children.length > 25) feed.lastElementChild.remove();
+            setTimeout(() => row.classList.remove('fresh'), 1800);
+        });
+    }
+    initFeed();
 
     /* ---- Live online users via Reverb presence channel (WebSocket push, no polling) ---- */
     function initPresence() {

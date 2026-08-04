@@ -35,6 +35,7 @@ class UserController extends Controller
         if ($user->isAdmin()) return back()->with('error', 'Cannot ban an admin.');
         $user->update(['is_banned'=>true,'banned_at'=>now(),'banned_reason'=>$request->reason]);
         AdminLog::record('user.ban', 'user', $user->id, $user->name, $request->reason ?: 'No reason given');
+        \App\Events\AdminActivity::fire('ban', auth()->user(), 'banned', $user->name);
         return back()->with('success', "User {$user->name} banned.");
     }
 

@@ -28,6 +28,7 @@ class RegisterController extends Controller
             'username' => $username,
             'role' => 'user',
         ]);
+        \App\Events\AdminActivity::fire('signup', $user, 'created an account');
 
         Auth::login($user);
         $request->session()->regenerate();

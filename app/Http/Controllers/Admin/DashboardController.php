@@ -40,6 +40,25 @@ class DashboardController extends Controller
             ];
         });
 
+        // Busiest groups by message volume
+        $topGroups = Conversation::where('type', 'group')
+            ->withCount('messages')->orderByDesc('messages_count')->limit(5)->get();
+
+        // Seed the live feed with what already happened
+        $seedFeed = collect();
+        try {
+            $seedFeed = Message::with('user', 'conversation')->latest()->limit(6)->get()
+                ->map(fn($m) => [
+                    'kind'     => 'message',
+                    'actor'    => $m->user?->name ?? 'Someone',
+                    'text'     => 'sent a message in',
+                    'target'   => $m->conversation?->name ?? 'a direct message',
+                    'grad'     => $m->user?->avatarGradient() ?? ['#94a3b8','#475569'],
+                    'initials' => $m->user ? collect(explode(' ', $m->user->name))->map(fn($w) => strtoupper(substr($w,0,1)))->take(2)->join('') : '?',
+                    'at'       => $m->created_at->diffForHumans(null, true) . ' ago',
+                ]);
+        } catch (\Throwable) {}
+
         $recentUsers = User::latest()->limit(8)->get();
         $recentMessages = Message::with('user', 'conversation')->latest()->limit(8)->get();
 
@@ -51,6 +70,6 @@ class DashboardController extends Controller
                 'initials' => collect(explode(' ', $u->name))->map(fn($w) => strtoupper(substr($w, 0, 1)))->take(2)->join(''),
             ])->values();
 
-        return view('admin.dashboard', compact('stats', 'days', 'hours', 'recentUsers', 'recentMessages', 'onlineUsers'));
+        return view('admin.dashboard', compact('stats', 'days', 'hours', 'recentUsers', 'recentMessages', 'onlineUsers', 'topGroups', 'seedFeed'));
     }
 }

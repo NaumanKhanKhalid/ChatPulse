@@ -103,6 +103,9 @@
                 <button class="adm-theme" onclick="document.documentElement.classList.toggle('dark');localStorage.setItem('cp-dark',document.documentElement.classList.contains('dark')?'1':'0')" title="Toggle theme">
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
                 </button>
+                <button class="adm-kbd-hint" onclick="document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true}))" title="Command palette">
+                    <kbd>Ctrl</kbd><kbd>K</kbd>
+                </button>
                 <div class="adm-me">
                     <div class="avatar" style="width:32px;height:32px;background:linear-gradient(135deg,{{ $admGrad[0] }},{{ $admGrad[1] }});font-size:12px">{{ $admInitials }}</div>
                     <span>{{ $admUser->name }}</span>
@@ -127,7 +130,83 @@
         </main>
     </div>
 </div>
+{{-- Command palette (Cmd/Ctrl + K) --}}
+<div class="adm-pal-ov" id="palOv">
+    <div class="adm-pal">
+        <div class="adm-pal-in">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input type="text" id="palInput" placeholder="Jump to a page, search users…" autocomplete="off">
+            <kbd>esc</kbd>
+        </div>
+        <div class="adm-pal-list" id="palList"></div>
+    </div>
+</div>
+
 <script>
+/* ---- Command palette ---- */
+(function () {
+    const PAGES = [
+        ['Dashboard',     '{{ route('admin.dashboard') }}',    'overview stats health'],
+        ['Users',         '{{ route('admin.users') }}',        'people accounts ban role'],
+        ['Conversations', '{{ route('admin.conversations') }}','chats direct groups'],
+        ['Messages',      '{{ route('admin.messages') }}',     'moderate content'],
+        ['Groups',        '{{ route('admin.groups') }}',       'channels'],
+        ['Reports',       '{{ route('admin.reports') }}',      'abuse spam flags'],
+        ['Security Log',  '{{ route('admin.security-log') }}', 'logins failed attempts brute force'],
+        ['Error Logs',    '{{ route('admin.logs') }}',         'exceptions stack traces'],
+        ['Queue Jobs',    '{{ route('admin.jobs') }}',         'failed retry'],
+        ['Activity Log',  '{{ route('admin.activity') }}',     'audit trail admin actions'],
+        ['IP Bans',       '{{ route('admin.security') }}',     'security block'],
+        ['Back to Chat',  '{{ route('chat.index') }}',         'app messages'],
+    ];
+    const ov = document.getElementById('palOv');
+    const input = document.getElementById('palInput');
+    const list = document.getElementById('palList');
+    let items = [], cursor = 0;
+
+    function render(q) {
+        const term = q.trim().toLowerCase();
+        items = PAGES.filter(([name, , kw]) =>
+            !term || name.toLowerCase().includes(term) || kw.includes(term));
+        cursor = 0;
+        if (!items.length) {
+            list.innerHTML = `<div class="adm-pal-empty">Nothing matches “${q}”</div>`;
+            return;
+        }
+        list.innerHTML = items.map(([name, url], i) =>
+            `<a href="${url}" class="adm-pal-item ${i === 0 ? 'on' : ''}" data-i="${i}">
+                <span>${name}</span><kbd>↵</kbd>
+            </a>`).join('');
+    }
+
+    function move(step) {
+        const els = [...list.querySelectorAll('.adm-pal-item')];
+        if (!els.length) return;
+        els[cursor]?.classList.remove('on');
+        cursor = (cursor + step + els.length) % els.length;
+        els[cursor].classList.add('on');
+        els[cursor].scrollIntoView({ block: 'nearest' });
+    }
+
+    function open() {
+        ov.classList.add('show');
+        input.value = ''; render('');
+        setTimeout(() => input.focus(), 30);
+    }
+    function close() { ov.classList.remove('show'); }
+
+    document.addEventListener('keydown', e => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); ov.classList.contains('show') ? close() : open(); return; }
+        if (!ov.classList.contains('show')) return;
+        if (e.key === 'Escape') close();
+        else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+        else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+        else if (e.key === 'Enter')     { e.preventDefault(); list.querySelectorAll('.adm-pal-item')[cursor]?.click(); }
+    });
+    input.addEventListener('input', () => render(input.value));
+    ov.addEventListener('click', e => { if (e.target === ov) close(); });
+})();
+
 document.getElementById('admCollapse')?.addEventListener('click', () => {
     const on = document.documentElement.classList.toggle('adm-collapsed');
     localStorage.setItem('cp-adm-collapsed', on ? '1' : '0');
