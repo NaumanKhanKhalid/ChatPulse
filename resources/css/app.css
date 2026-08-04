@@ -1296,3 +1296,9 @@ html.dark .call-btn:hover { background: rgba(16,185,129,.16); color: #6ee7b7; }
 /* permissions drawer under a user card */
 .adm-perms-panel { display: none; background: var(--side); border: 1px solid var(--line); border-top: none; border-radius: 0 0 14px 14px; padding: 12px 16px; margin: -10px 0 0; }
 .adm-perms-panel.open { display: block; }
+
+/* users table: banned row + small presence dot */
+.adm-tr-banned { background: rgba(239,68,68,.04); }
+.adm-tr-banned td:first-child { box-shadow: inset 3px 0 0 #ef4444; }
+.adm-item-dot.sm { width: 10px; height: 10px; bottom: -1px; right: -1px; }
+.adm-table .adm-item-av { display: inline-block; }
