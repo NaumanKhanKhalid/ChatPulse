@@ -167,7 +167,7 @@ window.CPOverlays = (function () {
     if (!g.owner) g.owner = ids[0];
     admins.add(g.owner);
     const isAdmin = true; // current user is the group owner/admin in this prototype
-    let token = genToken();
+    let inviteUrl = null; // filled from the server on demand
     let ov;
 
     const notify = () => { if (window.CP && CP.__onGroupChange) CP.__onGroupChange(); };
@@ -200,7 +200,7 @@ window.CPOverlays = (function () {
         ${ids.map(id => { const u = users[id]; if (!u) return ''; const meRow = id === me.id; const badge = id === g.owner ? '<span class="gd-role" style="background:#fef3c7;color:#b45309">owner</span>' : (admins.has(id) ? '<span class="gd-role">admin</span>' : ''); return `<div class="gd-mem">${av(u, 34)}<span class="gd-mem-name">${esc(u.name)}${meRow ? ' <span style="color:var(--text3);font-weight:600">(you)</span>' : ''}${badge}</span>${isAdmin && !meRow ? `<button class="gd-kebab" data-memmenu="${id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg></button>` : ''}</div>`; }).join('')}
       </div>
       ${isAdmin ? `<div class="gd-sec"><div class="gd-sec-h">Invite link</div>
-        <div class="invite-box"><span class="invite-url" id="invUrl">chatpulse.app/join/${token}</span><button class="invite-copy" id="invCopy">Copy</button></div>
+        <div class="invite-box"><span class="invite-url" id="invUrl">${inviteUrl ? esc(inviteUrl) : 'Generating link…'}</span><button class="invite-copy" id="invCopy">Copy</button></div>
         <div class="invite-meta"><span>Expires in 7 days</span><button class="invite-regen" id="invRegen">Regenerate</button></div></div>` : ''}
       <div class="gd-danger"><button class="leave">Leave group</button>${isAdmin ? '<button class="del">Delete group</button>' : ''}</div>`;
     }
@@ -213,8 +213,36 @@ window.CPOverlays = (function () {
       ov.querySelector('[data-mute]')?.addEventListener('click', () => { g.muted = !g.muted; if (g.muted && !g.muteUntil) g.muteUntil = 'Always'; if (conv) conv.muted = g.muted; paint(); M().toast(g.muted ? 'Group muted' : 'Group unmuted'); notify(); });
       ov.querySelector('[data-mutedur]')?.addEventListener('change', e => { g.muteUntil = e.target.value; if (conv) conv.muted = true; M().toast('Muted ' + e.target.value.toLowerCase()); paint(); });
       ov.querySelectorAll('[data-memmenu]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); memberMenu(b, +b.dataset.memmenu); }));
-      ov.querySelector('#invCopy')?.addEventListener('click', () => { navigator.clipboard?.writeText(ov.querySelector('#invUrl').textContent); M().toast('Invite link copied'); });
-      ov.querySelector('#invRegen')?.addEventListener('click', () => { token = genToken(); ov.querySelector('#invUrl').textContent = 'chatpulse.app/join/' + token; M().toast('New invite link generated'); });
+      const invEl = ov.querySelector('#invUrl');
+
+      function fetchInvite(announce) {
+        if (!invEl || !groupDbId()) return;
+        invEl.textContent = 'Generating link…';
+        const R2 = window.CP_ROUTES || {};
+        fetch('/groups/' + groupDbId() + '/invite', {
+          method: 'POST',
+          headers: { 'X-CSRF-TOKEN': R2.csrf || '', 'Accept': 'application/json' },
+        })
+          .then(r => r.json().catch(() => ({})).then(b => { if (!r.ok) throw new Error(b.error || 'Failed'); return b; }))
+          .then(data => {
+            inviteUrl = data.link;
+            invEl.textContent = inviteUrl;
+            if (announce) M().toast('New invite link generated');
+          })
+          .catch(err => {
+            invEl.textContent = 'Could not create a link';
+            if (announce) M().toast(err.message || 'Could not create an invite link', true);
+          });
+      }
+
+      if (!inviteUrl) fetchInvite(false);
+
+      ov.querySelector('#invCopy')?.addEventListener('click', () => {
+        if (!inviteUrl) { M().toast('The link is still being created', true); return; }
+        navigator.clipboard?.writeText(inviteUrl);
+        M().toast('Invite link copied');
+      });
+      ov.querySelector('#invRegen')?.addEventListener('click', () => fetchInvite(true));
       ov.querySelector('.leave')?.addEventListener('click', () => confirmDialog('Leave group', `Leave <b>${esc(g.name)}</b>? You’ll stop receiving its messages.`, 'Leave', true, () => { M().close(); if (CP.__onGroupLeave) CP.__onGroupLeave(g); M().toast('You left ' + g.name); }));
       ov.querySelector('.del')?.addEventListener('click', () => confirmDialog('Delete group', `Permanently delete <b>${esc(g.name)}</b> for everyone? This can’t be undone.`, 'Delete', true, () => { M().close(); if (CP.__onGroupDelete) CP.__onGroupDelete(g); M().toast('Group deleted'); }));
     }
@@ -329,7 +357,6 @@ window.CPOverlays = (function () {
     ov = open('Group details', mainBody());
     bindMain();
   }
-  function genToken() { const c = 'abcdefghijklmnopqrstuvwxyz0123456789'; let t = ''; for (let i = 0; i < 16; i++) t += c[Math.floor(Math.random() * c.length)]; return t; }
 
   /* ============ CALL ============ */
   let timer = null;
