@@ -71,6 +71,8 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
     Route::patch('/groups/{conversation}', [GroupController::class, 'update'])->name('groups.update');
     Route::post('/groups/{conversation}/join', [GroupController::class, 'join'])->name('groups.join');
     Route::post('/groups/{conversation}/leave', [GroupController::class, 'leave'])->name('groups.leave');
+    Route::post('/groups/{conversation}/members', [GroupController::class, 'addMembers'])->name('groups.members.add');
+    Route::delete('/groups/{conversation}/members/{user}', [GroupController::class, 'removeMember'])->name('groups.members.remove');
     Route::post('/groups/{conversation}/invite', [GroupController::class, 'generateInvite'])->name('groups.invite');
     Route::get('/invite/{token}', [GroupController::class, 'joinViaInvite'])->name('groups.join-invite');
 

@@ -89,4 +89,65 @@ class GroupController extends Controller
         $conversation = $this->groupService->joinViaInvite($token, auth()->user());
         return redirect()->route('chat.conversation', $conversation)->with('success', 'Joined group!');
     }
+
+    /** Add members to a group. Only participants may invite. */
+    public function addMembers(Request $request, Conversation $conversation): JsonResponse
+    {
+        $request->validate([
+            'user_ids'   => ['required', 'array'],
+            'user_ids.*' => ['integer', 'exists:users,id'],
+        ]);
+
+        if (!$conversation->isGroup()) {
+            return response()->json(['error' => 'Not a group.'], 422);
+        }
+        if (!$conversation->participants()->where('user_id', auth()->id())->exists()) {
+            return response()->json(['error' => 'You are not in this group.'], 403);
+        }
+
+        $max = (int) config('app.group_max_members', 200);
+        $added = [];
+
+        foreach ($request->user_ids as $uid) {
+            if ($conversation->participants()->count() >= $max) break;
+            if ($conversation->participants()->where('user_id', $uid)->exists()) continue;
+
+            $conversation->participants()->create([
+                'user_id'   => $uid,
+                'role'      => 'member',
+                'joined_at' => now(),
+            ]);
+            $added[] = $uid;
+
+            $u = User::find($uid);
+            if ($u) $this->groupService->sendSystemMessage($conversation, "{$u->name} was added to the group");
+        }
+
+        return response()->json([
+            'added'   => $added,
+            'members' => $conversation->participants()->pluck('user_id'),
+        ]);
+    }
+
+    /** Remove a member from a group. */
+    public function removeMember(Conversation $conversation, User $user): JsonResponse
+    {
+        if (!$conversation->isGroup()) {
+            return response()->json(['error' => 'Not a group.'], 422);
+        }
+        if (!$conversation->participants()->where('user_id', auth()->id())->exists()) {
+            return response()->json(['error' => 'You are not in this group.'], 403);
+        }
+        if ($conversation->created_by === $user->id) {
+            return response()->json(['error' => 'The group owner cannot be removed.'], 422);
+        }
+
+        $conversation->participants()->where('user_id', $user->id)->delete();
+        $this->groupService->sendSystemMessage($conversation, "{$user->name} was removed from the group");
+
+        return response()->json([
+            'removed' => $user->id,
+            'members' => $conversation->participants()->pluck('user_id'),
+        ]);
+    }
 }

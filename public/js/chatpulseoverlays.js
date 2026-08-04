@@ -164,6 +164,12 @@ window.CPOverlays = (function () {
     let ov;
 
     const notify = () => { if (window.CP && CP.__onGroupChange) CP.__onGroupChange(); };
+    const R = window.CP_ROUTES || {};
+    const groupDbId = () => conv ? conv.id.replace(/^c/, '') : null;
+    const apiGroup = (path, opts) => fetch('/groups/' + groupDbId() + path, {
+      headers: { 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      ...opts,
+    }).then(r => r.json().catch(() => ({})).then(b => { if (!r.ok) throw new Error(b.error || 'Request failed'); return b; }));
     const syncCount = () => { g.members = ids.length; if (conv) conv.members = ids; };
     const closeMenus = () => document.querySelectorAll('.gd-menu').forEach(m => m.remove());
 
@@ -226,7 +232,13 @@ window.CPOverlays = (function () {
       menu.querySelector('[data-mi="promote"]')?.addEventListener('click', () => { admins.add(id); closeMenus(); paint(); M().toast(u.name + ' is now an admin'); notify(); });
       menu.querySelector('[data-mi="demote"]')?.addEventListener('click', () => { admins.delete(id); closeMenus(); paint(); M().toast(u.name + ' is no longer an admin'); notify(); });
       menu.querySelector('[data-mi="transfer"]')?.addEventListener('click', () => { closeMenus(); confirmDialog('Transfer ownership', `Make <b>${esc(u.name)}</b> the owner of ${esc(g.name)}? You’ll stay an admin.`, 'Transfer', false, () => { g.owner = id; admins.add(id); paint(); M().toast(u.name + ' is now the owner'); notify(); }); });
-      menu.querySelector('[data-mi="remove"]')?.addEventListener('click', () => { closeMenus(); confirmDialog('Remove member', `Remove <b>${esc(u.name)}</b> from ${esc(g.name)}?`, 'Remove', true, () => { const i = ids.indexOf(id); if (i > -1) ids.splice(i, 1); admins.delete(id); syncCount(); paint(); M().toast(u.name + ' removed'); notify(); }); });
+      menu.querySelector('[data-mi="remove"]')?.addEventListener('click', () => { closeMenus(); confirmDialog('Remove member', `Remove <b>${esc(u.name)}</b> from ${esc(g.name)}?`, 'Remove', true, () => {
+        const drop = () => { const i = ids.indexOf(id); if (i > -1) ids.splice(i, 1); admins.delete(id); syncCount(); paint(); M().toast(u.name + ' removed'); notify(); };
+        if (!groupDbId()) { drop(); return; }
+        apiGroup('/members/' + id, { method: 'DELETE' })
+          .then(data => { if (Array.isArray(data.members)) { ids.length = 0; ids.push(...data.members); } drop(); })
+          .catch(err => M().toast(err.message || 'Could not remove member', true));
+      }); });
       setTimeout(() => document.addEventListener('click', function h(e) { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', h); } }), 0);
     }
 
@@ -243,7 +255,19 @@ window.CPOverlays = (function () {
       ov.querySelector('[data-back]').addEventListener('click', paint);
       ov.querySelectorAll('[data-add]').forEach(it => it.addEventListener('click', () => { const id = +it.dataset.add; if (sel.has(id)) { sel.delete(id); it.classList.remove('on'); } else { sel.add(id); it.classList.add('on'); } addBtn.disabled = !sel.size; addBtn.textContent = sel.size ? `Add ${sel.size}` : 'Add selected'; }));
       ov.querySelector('#amSearch').addEventListener('input', e => { const q = e.target.value.toLowerCase(); ov.querySelectorAll('[data-add]').forEach(it => { const u = users[+it.dataset.add]; it.style.display = (u.name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)) ? '' : 'none'; }); });
-      addBtn.addEventListener('click', () => { sel.forEach(id => { if (!ids.includes(id)) ids.push(id); }); syncCount(); paint(); M().toast(sel.size + ' member' + (sel.size > 1 ? 's' : '') + ' added'); notify(); });
+      addBtn.addEventListener('click', () => {
+        const picked = [...sel];
+        addBtn.disabled = true; addBtn.textContent = 'Adding…';
+        const done = () => { syncCount(); paint(); M().toast(picked.length + ' member' + (picked.length > 1 ? 's' : '') + ' added'); notify(); };
+        if (!groupDbId()) { picked.forEach(id => { if (!ids.includes(id)) ids.push(id); }); done(); return; }
+        apiGroup('/members', { method: 'POST', body: JSON.stringify({ user_ids: picked }) })
+          .then(data => {
+            if (Array.isArray(data.members)) { ids.length = 0; ids.push(...data.members); }
+            else picked.forEach(id => { if (!ids.includes(id)) ids.push(id); });
+            done();
+          })
+          .catch(err => { addBtn.disabled = false; addBtn.textContent = 'Add selected'; M().toast(err.message || 'Could not add members', true); });
+      });
     }
 
     function showEdit() {
