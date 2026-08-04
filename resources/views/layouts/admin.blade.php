@@ -65,6 +65,18 @@
                 <span>Reports</span>
                 @if($openReports > 0)<em class="adm-nav-badge">{{ $openReports }}</em>@endif
             </a>
+            <a href="{{ route('admin.security-log') }}" class="adm-nav-item {{ request()->routeIs('admin.security-log*') ? 'on' : '' }}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 2a5 5 0 0 1 5 5v1h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5Zm0 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                <span>Security Log</span>
+            </a>
+            <a href="{{ route('admin.logs') }}" class="adm-nav-item {{ request()->routeIs('admin.logs*') ? 'on' : '' }}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 3 3 19h18L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 10v3.5M12 16.5h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <span>Error Logs</span>
+            </a>
+            <a href="{{ route('admin.jobs') }}" class="adm-nav-item {{ request()->routeIs('admin.jobs*') ? 'on' : '' }}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="4.5" width="17" height="5" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="3.5" y="14.5" width="17" height="5" rx="1.5" stroke="currentColor" stroke-width="1.7"/></svg>
+                <span>Queue Jobs</span>
+            </a>
             <a href="{{ route('admin.activity') }}" class="adm-nav-item {{ request()->routeIs('admin.activity*') ? 'on' : '' }}">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 8v4.5l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="12" r="8.3" stroke="currentColor" stroke-width="1.7"/></svg>
                 <span>Activity Log</span>

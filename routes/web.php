@@ -133,6 +133,14 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
         Route::patch('/users/{user}/role', [\App\Http\Controllers\Admin\UserController::class, 'changeRole'])->name('users.role');
         Route::patch('/users/{user}/permissions', [\App\Http\Controllers\Admin\UserController::class, 'updatePermissions'])->name('users.permissions');
         Route::get('/activity', [\App\Http\Controllers\Admin\ActivityLogController::class, 'index'])->name('activity');
+        Route::get('/security-log', [\App\Http\Controllers\Admin\MonitoringController::class, 'security'])->name('security-log');
+        Route::get('/logs', [\App\Http\Controllers\Admin\MonitoringController::class, 'logs'])->name('logs');
+        Route::post('/logs/clear', [\App\Http\Controllers\Admin\MonitoringController::class, 'clearLogs'])->name('logs.clear');
+        Route::get('/jobs', [\App\Http\Controllers\Admin\MonitoringController::class, 'jobs'])->name('jobs');
+        Route::post('/jobs/retry-all', [\App\Http\Controllers\Admin\MonitoringController::class, 'retryAllJobs'])->name('jobs.retry-all');
+        Route::post('/jobs/{uuid}/retry', [\App\Http\Controllers\Admin\MonitoringController::class, 'retryJob'])->name('jobs.retry');
+        Route::delete('/jobs/{uuid}', [\App\Http\Controllers\Admin\MonitoringController::class, 'deleteJob'])->name('jobs.delete');
+        Route::get('/health/history', [\App\Http\Controllers\Admin\MonitoringController::class, 'history'])->name('health.history');
         Route::get('/health', [\App\Http\Controllers\Admin\HealthController::class, 'index'])->name('health');
         Route::get('/conversations', [\App\Http\Controllers\Admin\ConversationController::class, 'index'])->name('conversations');
         Route::get('/conversations/{conversation}', [\App\Http\Controllers\Admin\ConversationController::class, 'show'])->name('conversations.show');
