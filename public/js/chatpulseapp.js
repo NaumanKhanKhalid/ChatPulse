@@ -181,7 +181,7 @@
       ${stack}
       <div class="hdr-actions">
         ${iconBtn('search', 'Search in conversation', 'hdrSearch')}
-        /* Calls disabled for now */
+        ${'' /* calls disabled for now */}
         ${iconBtn('panel', 'Toggle info', 'togglePanel')}
       </div>`;
     $('#hdrSearch')?.addEventListener('click', openThreadSearch);
