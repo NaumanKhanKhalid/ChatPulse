@@ -59,12 +59,7 @@
         </div>
         <div class="call-actions">
             @if($call->conversation)
-            <a href="{{ route('chat.conversation', $call->conversation) }}?call=audio" class="call-btn" title="Call back">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M6.2 4.5 8 4l1.6 3.4-1.5 1.3a11 11 0 0 0 4.7 4.7l1.3-1.5L17.5 15l-.5 1.8c-.2.7-.9 1.1-1.6 1A14 14 0 0 1 4.2 6.6c-.1-.7.3-1.4 1-1.6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-            </a>
-            <a href="{{ route('chat.conversation', $call->conversation) }}?call=video" class="call-btn" title="Video call back">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M15 10.5 20 7v10l-5-3.5M4 7.5C4 6.7 4.7 6 5.5 6h8c.8 0 1.5.7 1.5 1.5v9c0 .8-.7 1.5-1.5 1.5h-8C4.7 18 4 17.3 4 16.5v-9Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-            </a>
+            {{-- Call-back buttons disabled for now --}}
             <a href="{{ route('chat.conversation', $call->conversation) }}" class="call-btn" title="Open chat">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 6.5C4 5.12 5.12 4 6.5 4h11C18.88 4 20 5.12 20 6.5v7c0 1.38-1.12 2.5-2.5 2.5H10l-3.6 3a1 1 0 0 1-1.65-.77V6.5Z" stroke="currentColor" stroke-width="1.8"/></svg>
             </a>

@@ -181,8 +181,7 @@
       ${stack}
       <div class="hdr-actions">
         ${iconBtn('search', 'Search in conversation', 'hdrSearch')}
-        ${iconBtn('phone', 'Audio call', 'callAudio')}
-        ${iconBtn('video', 'Video call', 'callVideo')}
+        /* Calls disabled for now */
         ${iconBtn('panel', 'Toggle info', 'togglePanel')}
       </div>`;
     $('#hdrSearch')?.addEventListener('click', openThreadSearch);
@@ -192,8 +191,9 @@
     $('#chatHeader .hdr-id')?.addEventListener('click', openDetail);
     $('#chatHeader .hdr-info')?.addEventListener('click', openDetail);
     const ct = callTarget(c);
-    $('#callAudio')?.addEventListener('click', () => CPOverlays.openCall(ct, 'audio', false, c.id));
-    $('#callVideo')?.addEventListener('click', () => CPOverlays.openCall(ct, 'video', false, c.id));
+    // Calls disabled for now
+    // $('#callAudio')?.addEventListener('click', () => CPOverlays.openCall(ct, 'audio', false, c.id));
+    // $('#callVideo')?.addEventListener('click', () => CPOverlays.openCall(ct, 'video', false, c.id));
   }
   function callTarget(c) { return c.type === 'direct' ? users[c.with] : { name: c.name, initials: c.initials, grad: c.grad }; }
 
@@ -526,7 +526,7 @@
         <p class="panel-sub">${m.group ? esc(c.desc) : '@' + m.u.username}</p>
         ${presLabel}
         <div class="panel-quick">
-          ${m.group ? '' : `${quick('phone', 'Call', 'qCall')}${quick('video', 'Video', 'qVideo')}`}
+          ${'' /* calls disabled for now */}
           ${quick('bell', 'Mute')}${quick('search', 'Search', 'qSearch')}
         </div>
       </div>`;
@@ -584,8 +584,9 @@
     $('#ppAllFiles')?.addEventListener('click', () => { c._showAllFiles = !c._showAllFiles; renderPanel(c); });
     if (c.type === 'direct') {
       const peer = users[c.with];
-      $('#qCall')?.addEventListener('click', () => CPOverlays.openCall(peer, 'audio', true, c.id));
-      $('#qVideo')?.addEventListener('click', () => CPOverlays.openCall(peer, 'video', true, c.id));
+      // Calls disabled for now
+      // $('#qCall')?.addEventListener('click', () => CPOverlays.openCall(peer, 'audio', true, c.id));
+      // $('#qVideo')?.addEventListener('click', () => CPOverlays.openCall(peer, 'video', true, c.id));
       $('#ppMute')?.addEventListener('click', () => { c.muted = !c.muted; toast(c.muted ? 'Notifications muted' : 'Notifications unmuted'); renderPanel(c); renderList($('#search').value); });
       $('#ppBlock')?.addEventListener('click', () => CPModals.openReport({ kind: 'user', name: peer.name }, () => toast(peer.name + ' reported')));
     }
@@ -1657,11 +1658,12 @@
       })
       .error(() => {});
 
-    window.Echo.private('user.' + me.id)
-      .listen('CallInitiated', e => {
-        const caller = users[e.caller.id] || { name: e.caller.name, initials: e.caller.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2), grad: ['#1a6b3a','#10b981'] };
-        CPOverlays.openCall(caller, e.type, true, 'c' + e.conversation_id, e.call_id);
-      });
+    // Calls disabled for now — incoming call listener
+    // window.Echo.private('user.' + me.id)
+    //   .listen('CallInitiated', e => {
+    //     const caller = users[e.caller.id] || { name: e.caller.name, initials: e.caller.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2), grad: ['#1a6b3a','#10b981'] };
+    //     CPOverlays.openCall(caller, e.type, true, 'c' + e.conversation_id, e.call_id);
+    //   });
   }
 
   function subscribeConv(c) {
@@ -1840,15 +1842,15 @@
       else { showWelcome(); }
     }, 750);
     setTimeout(() => { if (window.CPAccount) CPAccount.startOnboarding(/[?&]onboarding=1/.test(location.search)); }, 950);
-    // Call back from the call log: /chat/{id}?call=audio|video
-    const callParam = (location.search.match(/[?&]call=(audio|video)/) || [])[1];
-    if (callParam) {
-      history.replaceState({}, '', location.pathname);
-      setTimeout(() => {
-        const c = conversations.find(x => x.id === activeId);
-        if (c && c.type === 'direct' && users[c.with]) CPOverlays?.openCall(users[c.with], callParam, false, c.id);
-      }, 1100);
-    }
+    // Calls disabled for now — call back from the call log
+    // const callParam = (location.search.match(/[?&]call=(audio|video)/) || [])[1];
+    // if (callParam) {
+    //   history.replaceState({}, '', location.pathname);
+    //   setTimeout(() => {
+    //     const c = conversations.find(x => x.id === activeId);
+    //     if (c && c.type === 'direct' && users[c.with]) CPOverlays?.openCall(users[c.with], callParam, false, c.id);
+    //   }, 1100);
+    // }
   }
   document.addEventListener('DOMContentLoaded', boot);
 })();
