@@ -47,6 +47,15 @@
     </div>
 </div>
 
+{{-- Health trend (from stored snapshots) --}}
+<div class="adm-card" style="margin-bottom:16px">
+    <div class="adm-card-head">
+        <h3>Health Trend</h3>
+        <span class="adm-card-sub" id="trendPeak">last 24h</span>
+    </div>
+    <div class="adm-trend" id="trendChart"><p class="adm-empty">Loading history…</p></div>
+</div>
+
 <div class="adm-grid2" style="margin-bottom:16px">
     {{-- Live online users (WebSocket presence) --}}
     <div class="adm-card">
@@ -182,6 +191,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     pollHealth();
     setInterval(pollHealth, 10000);
+
+    /* ---- Health trend from stored snapshots ---- */
+    fetch('{{ route('admin.health.history') }}?hours=24', { headers: { 'Accept': 'application/json' } })
+        .then(r => r.json())
+        .then(d => {
+            const box = $id('trendChart');
+            if (!d.points || !d.points.length) {
+                box.innerHTML = '<p class="adm-empty">No snapshots yet — they are recorded every 5 minutes by the scheduler.</p>';
+                return;
+            }
+            $id('trendPeak').textContent = `last 24h · peak CPU ${d.peak_cpu ?? 0}% · peak memory ${d.peak_mem ?? 0}%`;
+            const pts = d.points.slice(-72); // keep the chart readable
+            box.innerHTML = pts.map(p => {
+                const cpu = p.cpu ?? 0, mem = p.mem ?? 0;
+                const tone = cpu > 85 ? '#ef4444' : cpu > 65 ? '#f59e0b' : 'var(--primary)';
+                return `<div class="adm-trend-col" title="${p.at} — CPU ${cpu}%, memory ${mem}%">
+                    <div class="adm-trend-bar" style="height:${Math.max(2, cpu)}%;background:${tone}"></div>
+                    <div class="adm-trend-bar mem" style="height:${Math.max(2, mem)}%"></div>
+                </div>`;
+            }).join('');
+        })
+        .catch(() => { $id('trendChart').innerHTML = '<p class="adm-empty">Could not load history.</p>'; });
 
     /* ---- Live online users via Reverb presence channel (WebSocket push, no polling) ---- */
     function initPresence() {

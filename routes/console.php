@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('presence:cleanup')->everyMinute();
+Schedule::command('health:snapshot')->everyFiveMinutes();
+Schedule::command('logs:prune')->daily();
 Schedule::command('messages:send-scheduled')->everyMinute();
 Schedule::command('presence:clear-expired-status')->hourly();
 Schedule::command('mail:send-digest')->dailyAt('09:00');
