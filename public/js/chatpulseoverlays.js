@@ -298,7 +298,39 @@ window.CPOverlays = (function () {
     const R = window.CP_ROUTES || {};
     let callId = incomingCallId || null;
     let pc = null, callChannel = null, ringTimer = null;
+    let localStream = null, remoteStream = null, screenStream = null, camSender = null;
     const toastSafe = m => { try { window.CPToast ? window.CPToast(m) : console.log(m); } catch (e) {} };
+
+    /** Ask for mic (and camera for video calls). Returns null if denied. */
+    function getMedia() {
+      if (localStream) return Promise.resolve(localStream);
+      if (!navigator.mediaDevices?.getUserMedia) {
+        toastSafe('Camera/mic need HTTPS (or localhost)');
+        return Promise.resolve(null);
+      }
+      return navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' })
+        .then(st => { localStream = st; return st; })
+        .catch(err => {
+          toastSafe(err && err.name === 'NotAllowedError'
+            ? 'Microphone/camera permission denied'
+            : 'Could not access microphone/camera');
+          return null;
+        });
+    }
+
+    function stopStreams() {
+      [localStream, screenStream].forEach(st => st?.getTracks().forEach(t => t.stop()));
+      localStream = screenStream = remoteStream = null;
+      if (pc) { try { pc.close(); } catch (e) {} pc = null; }
+    }
+
+    function attachStreams() {
+      const lv = ov.querySelector('#localVid'), rv = ov.querySelector('#remoteVid'), ra = ov.querySelector('#remoteAud');
+      if (lv && localStream && lv.srcObject !== localStream) { lv.srcObject = localStream; lv.play?.().catch(() => {}); }
+      const rs = remoteStream;
+      if (rv && rs && rv.srcObject !== rs) { rv.srcObject = rs; rv.play?.().catch(() => {}); }
+      if (ra && rs && ra.srcObject !== rs) { ra.srcObject = rs; ra.play?.().catch(() => {}); }
+    }
 
     function postJson(url, data) {
       return fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': R.csrf || '', 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
@@ -308,6 +340,28 @@ window.CPOverlays = (function () {
       // ICE servers come from config/webrtc.php — STUN always, TURN when configured
       const ice = (window.CP_ROUTES && window.CP_ROUTES.iceServers) || [{ urls: 'stun:stun.l.google.com:19302' }];
       pc = new RTCPeerConnection({ iceServers: ice });
+
+      // Send our mic/camera to the peer
+      if (localStream) {
+        localStream.getTracks().forEach(t => {
+          const sender = pc.addTrack(t, localStream);
+          if (t.kind === 'video') camSender = sender;
+        });
+      }
+
+      // Receive the peer's mic/camera
+      remoteStream = new MediaStream();
+      pc.ontrack = e => {
+        e.streams[0]?.getTracks().forEach(t => remoteStream.addTrack(t));
+        attachStreams();
+      };
+
+      pc.onconnectionstatechange = () => {
+        if (pc && (pc.connectionState === 'failed' || pc.connectionState === 'disconnected')) {
+          toastSafe('Connection lost');
+        }
+      };
+
       pc.onicecandidate = e => {
         if (e.candidate && callId) {
           const url = (R.callSignal || '/calls/{call}/signal').replace('{call}', callId);
@@ -315,7 +369,7 @@ window.CPOverlays = (function () {
         }
       };
       if (callChannel) {
-        callChannel.listen('CallSignal', e => {
+        callChannel.listen('WebRTCSignal', e => {
           if (!pc || !e.signal) return;
           const sig = e.signal;
           if (sig.type === 'offer') {
@@ -342,20 +396,22 @@ window.CPOverlays = (function () {
           <div class="cra"><button class="cc accept" data-accept><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M6.2 4.5 8 4l1.6 3.4-1.5 1.3a11 11 0 0 0 4.7 4.7l1.3-1.5L17.5 15l-.5 1.8c-.2.7-.9 1.1-1.6 1A14 14 0 0 1 4.2 6.6c-.1-.7.3-1.4 1-1.6Z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg></button>Accept</div>
         </div>` : `<div class="call-controls"><button class="cc end" data-end><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M6.2 4.5 8 4l1.6 3.4-1.5 1.3a11 11 0 0 0 4.7 4.7l1.3-1.5L17.5 15l-.5 1.8c-.2.7-.9 1.1-1.6 1A14 14 0 0 1 4.2 6.6c-.1-.7.3-1.4 1-1.6Z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round" transform="rotate(135 12 12)"/></svg></button></div>`}`;
       ov.querySelector('[data-accept]')?.addEventListener('click', () => {
-        const url = (R.callAnswer || '/calls/{call}/answer').replace('{call}', callId);
-        postJson(url, {}).then(() => {
-          if (window.Echo && callId) { callChannel = window.Echo.private('call.' + callId); callChannel.listen('CallEnded', () => closeCall()); }
-          setupWebRTC(false);
-          connected();
-        }).catch(() => connected());
+        getMedia().then(() => {
+          const url = (R.callAnswer || '/calls/{call}/answer').replace('{call}', callId);
+          postJson(url, {}).then(() => {
+            if (window.Echo && callId) { callChannel = window.Echo.private('call.' + callId); callChannel.listen('CallEnded', () => { stopStreams(); closeCall(); }); }
+            setupWebRTC(false);
+            connected();
+          }).catch(() => connected());
+        });
       });
       ov.querySelector('[data-decline]')?.addEventListener('click', () => {
-        clearTimeout(ringTimer);
+        clearTimeout(ringTimer); stopStreams();
         if (callId) { const url = (R.callDecline || '/calls/{call}/decline').replace('{call}', callId); postJson(url, {}).catch(() => {}); }
         closeCall();
       });
       ov.querySelector('[data-end]')?.addEventListener('click', () => {
-        clearTimeout(ringTimer);
+        clearTimeout(ringTimer); stopStreams();
         if (callId) { const url = (R.callEnd || '/calls/{call}/end').replace('{call}', callId); postJson(url, {}).catch(() => {}); }
         closeCall();
       });
@@ -368,8 +424,8 @@ window.CPOverlays = (function () {
           if (window.Echo && callId) {
             // Subscribe immediately so a decline reaches us while still ringing
             callChannel = window.Echo.private('call.' + callId);
-            callChannel.listen('CallAnswered', () => { clearTimeout(ringTimer); setupWebRTC(true); connected(); });
-            callChannel.listen('CallEnded', () => { toastSafe(target.name + ' declined the call'); closeCall(); });
+            callChannel.listen('CallAnswered', () => { clearTimeout(ringTimer); getMedia().then(() => { setupWebRTC(true); connected(); }); });
+            callChannel.listen('CallEnded', () => { toastSafe(target.name + ' declined the call'); stopStreams(); closeCall(); });
           }
           // Stop ringing after 45s — nobody picked up
           ringTimer = setTimeout(() => {
@@ -386,8 +442,16 @@ window.CPOverlays = (function () {
       function fmt() { const m = String(Math.floor(sec / 60)).padStart(2, '0'), s = String(sec % 60).padStart(2, '0'); return m + ':' + s; }
       function paint() {
         ov.innerHTML = `
-          <div class="call-remote">${cam ? `<div class="vbg" style="background:${grad}"></div><div style="position:relative;z-index:1;text-align:center">${av(target, 96)}</div>` : `<div style="text-align:center">${av(target, 120)}<div class="call-name">${esc(target.name)}</div></div>`}</div>
-          ${type === 'video' && cam ? `<div class="call-self" style="background:${screen ? '#0f172a' : 'linear-gradient(135deg,#f9a8d4,#db2777)'}">${screen ? '<span style="font-size:12px;color:#cbd5e1">Sharing screen</span>' : av(me, 52)}</div>` : ''}
+          <div class="call-remote">
+            <div class="vbg" style="background:${grad}"></div>
+            <video id="remoteVid" autoplay playsinline class="${type === 'video' ? 'show' : ''}"></video>
+            <audio id="remoteAud" autoplay></audio>
+            <div class="call-poster ${type === 'video' ? 'behind' : ''}">${av(target, 120)}${type !== 'video' ? `<div class="call-name">${esc(target.name)}</div>` : ''}</div>
+          </div>
+          ${type === 'video' ? `<div class="call-self">
+            <video id="localVid" autoplay playsinline muted class="${cam || screen ? 'show' : ''}"></video>
+            ${(!cam && !screen) ? `<div class="call-self-off">${av(me, 44)}</div>` : ''}
+          </div>` : ''}
           <div style="position:absolute;top:30px;left:50%;transform:translateX(-50%);text-align:center;z-index:2">
             <div class="call-name" style="font-size:18px;margin:0">${esc(target.name)}</div>
             <div class="call-state" id="callTimer">${fmt()}</div>
@@ -398,22 +462,59 @@ window.CPOverlays = (function () {
             <button class="cc ${screen ? 'off' : ''}" data-screen title="Share screen"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M9 20h6M12 17v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
             <button class="cc end" data-end><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M6.2 4.5 8 4l1.6 3.4-1.5 1.3a11 11 0 0 0 4.7 4.7l1.3-1.5L17.5 15l-.5 1.8c-.2.7-.9 1.1-1.6 1A14 14 0 0 1 4.2 6.6c-.1-.7.3-1.4 1-1.6Z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round" transform="rotate(135 12 12)"/></svg></button>
           </div>`;
-        ov.querySelector('[data-mic]').addEventListener('click', () => { mic = !mic; paint(); });
-        ov.querySelector('[data-cam]')?.addEventListener('click', () => { cam = !cam; paint(); });
-        ov.querySelector('[data-screen]').addEventListener('click', () => { screen = !screen; paint(); });
-        ov.querySelector('[data-end]').addEventListener('click', () => { if (callId) { const url = (R.callEnd || '/calls/{call}/end').replace('{call}', callId); postJson(url, {}).catch(() => {}); } closeCall(); });
+        ov.querySelector('[data-mic]').addEventListener('click', () => {
+          mic = !mic;
+          localStream?.getAudioTracks().forEach(t => t.enabled = mic);
+          paint();
+        });
+        ov.querySelector('[data-cam]')?.addEventListener('click', () => {
+          cam = !cam;
+          localStream?.getVideoTracks().forEach(t => t.enabled = cam);
+          paint();
+        });
+        ov.querySelector('[data-screen]').addEventListener('click', () => toggleScreenShare());
+        ov.querySelector('[data-end]').addEventListener('click', () => { if (callId) { const url = (R.callEnd || '/calls/{call}/end').replace('{call}', callId); postJson(url, {}).catch(() => {}); } stopStreams(); closeCall(); });
+        attachStreams();
       }
       paint();
       timer = setInterval(() => { sec++; const t = ov.querySelector('#callTimer'); if (t) t.textContent = fmt(); }, 1000);
+
+      /** Swap the outgoing video track between camera and screen. */
+      function toggleScreenShare() {
+        if (screen) {
+          screenStream?.getTracks().forEach(t => t.stop());
+          screenStream = null; screen = false;
+          const camTrack = localStream?.getVideoTracks()[0];
+          if (camSender && camTrack) camSender.replaceTrack(camTrack);
+          paint();
+          return;
+        }
+        if (!navigator.mediaDevices?.getDisplayMedia) { toastSafe('Screen sharing not supported here'); return; }
+        navigator.mediaDevices.getDisplayMedia({ video: true }).then(st => {
+          screenStream = st; screen = true;
+          const track = st.getVideoTracks()[0];
+          if (camSender) camSender.replaceTrack(track);
+          track.onended = () => { if (screen) toggleScreenShare(); };
+          paint();
+        }).catch(() => {});
+      }
     }
     function icMic(on) { return on ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 4a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V7a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="1.8"/><path d="M6 11a6 6 0 0 0 12 0M12 18v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>' : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 9v3a3 3 0 0 0 4.5 2.6M15 11V7a3 3 0 0 0-5.6-1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6 11a6 6 0 0 0 9 5.2M12 18v2M4 4l16 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'; }
     function icCam(on) { return on ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M15 10.5 20 7v10l-5-3.5M4 7.5C4 6.7 4.7 6 5.5 6h8c.8 0 1.5.7 1.5 1.5v9c0 .8-.7 1.5-1.5 1.5h-8C4.7 18 4 17.3 4 16.5v-9Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>' : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 8.5C4 7.7 4.7 7 5.5 7H12M16 9l4-2.5v9M4 4l16 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; }
 
+    activeCallCleanup = stopStreams;
     ringing();
     document.addEventListener('keydown', callEsc);
   }
   function callEsc(e) { if (e.key === 'Escape') closeCall(); }
-  function closeCall() { clearInterval(timer); document.querySelectorAll('.call-ov').forEach(o => o.remove()); document.removeEventListener('keydown', callEsc); }
+  let activeCallCleanup = null;
+  function closeCall() {
+    clearInterval(timer);
+    try { activeCallCleanup?.(); } catch (e) {}
+    activeCallCleanup = null;
+    document.querySelectorAll('.call-ov').forEach(o => o.remove());
+    document.removeEventListener('keydown', callEsc);
+  }
 
   /* fallback shell if CPModals.__open not present — use CPModals public open via a thin wrapper */
   function open(title, body) {
