@@ -1436,3 +1436,19 @@ html.dark .fb-done-ic { background: rgba(16,185,129,.16); color: #6ee7b7; }
 
 /* admin feedback inline status form */
 .adm-fb-form { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line2); }
+
+/* ============================================================
+   Pagination (custom view — Laravel's default ships Tailwind markup)
+   ============================================================ */
+.cp-pag { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cp-pag-btn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 10px; font-size: 13px; font-weight: 700; color: var(--text2); background: var(--card); border: 1px solid var(--line); text-decoration: none; transition: border-color .12s, color .12s, background .12s; }
+.cp-pag-btn:hover { border-color: var(--primary); color: var(--primary); }
+.cp-pag-btn.disabled { opacity: .4; pointer-events: none; }
+
+.cp-pag-nums { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.cp-pag-num { min-width: 34px; height: 34px; padding: 0 8px; border-radius: 9px; display: inline-grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--text2); text-decoration: none; transition: background .12s, color .12s; }
+.cp-pag-num:hover { background: var(--hover); color: var(--text); }
+.cp-pag-num.on { background: var(--primary); color: #fff; }
+.cp-pag-gap { padding: 0 4px; color: var(--text3); font-size: 13px; }
+
+@media (max-width: 620px) { .cp-pag-nums { display: none; } }
