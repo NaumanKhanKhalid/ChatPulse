@@ -18,42 +18,67 @@
     @endif
 </form>
 
-<div class="adm-card adm-card-flush">
-    <table class="adm-table">
-        <thead><tr><th>Conversation</th><th>Type</th><th>Members</th><th>Messages</th><th>Last activity</th><th style="text-align:right">Actions</th></tr></thead>
-        <tbody>
-            @forelse($conversations as $conv)
-            @php
-                $isGroup = $conv->type === 'group';
-                $title   = $isGroup ? ($conv->name ?? 'Unnamed group') : $conv->users->pluck('name')->join(' & ');
-                $ini     = collect(explode(' ', $title))->map(fn($w)=>strtoupper(substr($w,0,1)))->take(2)->join('');
-            @endphp
-            <tr class="adm-row-click" data-conv="{{ $conv->id }}" title="Open read-only view">
-                <td>
-                    <div class="adm-ucell">
-                        <div class="avatar" style="width:32px;height:32px;background:linear-gradient(135deg,{{ $isGroup ? '#818cf8,#7c3aed' : '#7dd3fc,#2563eb' }});font-size:12px">{{ $ini }}</div>
-                        <span class="adm-ucell-name">{{ \Illuminate\Support\Str::limit($title, 40) }}</span>
-                    </div>
-                </td>
-                <td><span class="adm-badge {{ $isGroup ? 'dim' : 'green' }}">{{ $isGroup ? 'Group' : 'Direct' }}</span></td>
-                <td>{{ $conv->participants_count }}</td>
-                <td>{{ $conv->messages_count }}</td>
-                <td class="adm-td-dim">{{ $conv->last_activity_at?->diffForHumans() ?? $conv->created_at->format('M j, Y') }}</td>
-                <td style="text-align:right">
-                    <button type="button" class="adm-act dim" data-view="{{ $conv->id }}">View</button>
-                    <form method="POST" action="{{ route('admin.conversations.destroy', $conv) }}" class="adm-inline" onsubmit="event.stopPropagation(); return confirm('Delete this conversation and all its messages?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="adm-act red">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            @empty
-            <tr><td colspan="6" class="adm-empty">No conversations found.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-    <div class="adm-pager">{{ $conversations->links() }}</div>
+<div class="adm-convos">
+    @forelse($conversations as $conv)
+    @php
+        $isGroup = $conv->type === 'group';
+        $people  = $conv->users->take(2);
+        $title   = $isGroup ? ($conv->name ?? 'Unnamed group') : $conv->users->pluck('name')->join(' & ');
+        $last    = $conv->lastMessage;
+        $preview = $last
+            ? ($last->body ?: '['.$last->type.']')
+            : 'No messages yet';
+        $gradG   = ['#818cf8','#7c3aed'];
+    @endphp
+    <div class="adm-convo" data-conv="{{ $conv->id }}" title="Open read-only view">
+        {{-- stacked avatars: two for a DM, one for a group --}}
+        <div class="adm-convo-avs {{ $isGroup ? 'single' : '' }}">
+            @if($isGroup)
+                @php $gi = collect(explode(' ', $title))->map(fn($w)=>strtoupper(substr($w,0,1)))->take(2)->join(''); @endphp
+                <div class="avatar" style="width:40px;height:40px;background:linear-gradient(135deg,{{ $gradG[0] }},{{ $gradG[1] }});font-size:14px">{{ $gi }}</div>
+            @else
+                @foreach($people as $p)
+                    @php $g = $p->avatarGradient(); $pi = collect(explode(' ', $p->name))->map(fn($w)=>strtoupper(substr($w,0,1)))->take(2)->join(''); @endphp
+                    <div class="avatar" style="width:36px;height:36px;background:linear-gradient(135deg,{{ $g[0] }},{{ $g[1] }});font-size:12.5px">{{ $pi }}</div>
+                @endforeach
+            @endif
+        </div>
+
+        <div class="adm-convo-main">
+            <div class="adm-convo-title">
+                @if($isGroup)
+                    <b>{{ $title }}</b>
+                @else
+                    @foreach($people as $p)<b>{{ $p->name }}</b>@if(!$loop->last)<i>&amp;</i>@endif @endforeach
+                @endif
+            </div>
+            <div class="adm-convo-sub">
+                <span class="adm-convo-type {{ $isGroup ? 'grp' : '' }}">{{ $isGroup ? 'Group' : 'Direct message' }}</span>
+                @if($isGroup)<span class="adm-convo-dot">·</span><span>{{ $conv->participants_count }} members</span>@endif
+                <span class="adm-convo-dot">·</span>
+                <span class="adm-convo-prev">{{ \Illuminate\Support\Str::limit($preview, 60) }}</span>
+            </div>
+        </div>
+
+        <div class="adm-convo-meta">
+            <span class="adm-convo-count">{{ $conv->messages_count }} msgs</span>
+            <span class="adm-convo-time">{{ $conv->last_activity_at?->diffForHumans(null, true) ?? $conv->created_at->format('M j') }}</span>
+        </div>
+
+        <div class="adm-convo-acts">
+            <button type="button" class="adm-act dim" data-view="{{ $conv->id }}">View</button>
+            <form method="POST" action="{{ route('admin.conversations.destroy', $conv) }}" class="adm-inline" onsubmit="event.stopPropagation(); return confirm('Delete this conversation and all its messages?')">
+                @csrf @method('DELETE')
+                <button type="submit" class="adm-act red">Delete</button>
+            </form>
+        </div>
+    </div>
+    @empty
+    <div class="adm-card"><p class="adm-empty">No conversations found.</p></div>
+    @endforelse
 </div>
+
+<div class="adm-pager">{{ $conversations->links() }}</div>
 
 {{-- Read-only chat popup --}}
 <div class="adm-modal-ov" id="convModal">

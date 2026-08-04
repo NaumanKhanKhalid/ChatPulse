@@ -12,7 +12,7 @@ class ConversationController extends Controller
 {
     public function index(Request $request): View
     {
-        $q = Conversation::withCount(['participants', 'messages'])->with('users');
+        $q = Conversation::withCount(['participants', 'messages'])->with(['users', 'lastMessage.user']);
 
         if ($s = $request->query('q')) {
             $q->where(fn($w) => $w->where('name', 'like', "%$s%")
