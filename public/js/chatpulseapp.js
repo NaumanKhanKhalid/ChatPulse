@@ -935,6 +935,111 @@
   }
 
 
+  /* ---------- feedback / support ---------- */
+  function openFeedback(preset) {
+    document.querySelectorAll('.fb-ov').forEach(o => o.remove());
+    const TYPES = [
+      ['bug',        'Something is broken', 'M12 3 3 19h18L12 3Z'],
+      ['suggestion', 'I have an idea',      'M9 21h6M12 3a6 6 0 0 1 4 10.5V16H8v-2.5A6 6 0 0 1 12 3Z'],
+      ['question',   'I need help',         'M12 17h.01M9.1 9a3 3 0 1 1 4.2 2.7c-.8.4-1.3 1.1-1.3 2'],
+      ['other',      'Something else',      'M6 12h.01M12 12h.01M18 12h.01'],
+    ];
+    let type = preset || 'bug';
+
+    const ov = document.createElement('div'); ov.className = 'fb-ov';
+    ov.innerHTML = `
+      <div class="fb-box" role="dialog" aria-label="Send feedback">
+        <div class="fb-head">
+          <div>
+            <h3>Send feedback</h3>
+            <p>Tell us what went wrong or what would make ChatPulse better.</p>
+          </div>
+          <button class="fb-x" data-close aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        </div>
+
+        <div class="fb-body">
+          <div class="fb-types">
+            ${TYPES.map(([k, label, d]) => `
+              <button class="fb-type ${k === type ? 'on' : ''}" data-type="${k}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="${d}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>${label}</span>
+              </button>`).join('')}
+          </div>
+
+          <label class="fb-label" for="fbMsg">Your message</label>
+          <textarea id="fbMsg" class="fb-input" rows="5" maxlength="2000" placeholder="What happened? The more detail the better — what you clicked, what you expected, what you saw."></textarea>
+          <div class="fb-count"><span id="fbN">0</span>/2000</div>
+
+          <label class="fb-label" for="fbEmail">Email for a reply <span>(optional)</span></label>
+          <input id="fbEmail" class="fb-input" type="email" placeholder="${esc(me.email || 'you@example.com')}" value="${esc(me.email || '')}">
+
+          <p class="fb-note">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 11v5M12 8h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            Your browser and screen size are attached automatically to help us reproduce issues.
+          </p>
+        </div>
+
+        <div class="fb-foot">
+          <button class="fb-btn ghost" data-close>Cancel</button>
+          <button class="fb-btn primary" id="fbSend" disabled>Send feedback</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+
+    const msg = ov.querySelector('#fbMsg');
+    const send = ov.querySelector('#fbSend');
+    const close = () => ov.remove();
+
+    ov.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', close));
+    ov.addEventListener('click', e => { if (e.target === ov) close(); });
+    document.addEventListener('keydown', function esc(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+    });
+
+    ov.querySelectorAll('[data-type]').forEach(b => b.addEventListener('click', () => {
+      type = b.dataset.type;
+      ov.querySelectorAll('[data-type]').forEach(x => x.classList.toggle('on', x === b));
+    }));
+
+    msg.addEventListener('input', () => {
+      ov.querySelector('#fbN').textContent = msg.value.length;
+      send.disabled = msg.value.trim().length < 5;
+    });
+    setTimeout(() => msg.focus(), 60);
+
+    send.addEventListener('click', () => {
+      send.disabled = true; send.textContent = 'Sending…';
+      fetch((window.CP_ROUTES || {}).feedback || '/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': (window.CP_ROUTES || {}).csrf || '', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          type,
+          message: msg.value.trim(),
+          contact_email: ov.querySelector('#fbEmail').value.trim() || null,
+          page: location.pathname,
+          screen: window.innerWidth + 'x' + window.innerHeight,
+        }),
+      })
+        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+        .then(() => {
+          ov.querySelector('.fb-box').innerHTML = `
+            <div class="fb-done">
+              <div class="fb-done-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="m5 13 4 4L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              <h3>Thank you</h3>
+              <p>Your feedback reached the team. If you left an email we may follow up.</p>
+              <button class="fb-btn primary" data-close2>Close</button>
+            </div>`;
+          ov.querySelector('[data-close2]').addEventListener('click', close);
+          setTimeout(close, 3200);
+        })
+        .catch(() => {
+          send.disabled = false; send.textContent = 'Send feedback';
+          toast('Could not send feedback — please try again', true);
+        });
+    });
+  }
+  window.CPFeedback = openFeedback;
+
   /* ---------- toast ---------- */
   function toast(msg, err) {
     const t = document.createElement('div'); t.className = 'toast ' + (err ? 'err' : '');
@@ -1009,6 +1114,7 @@
       </div>
       <div class="pm-sep"></div>
       <button class="pm-item" id="umEditProfile"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M16.5 4.5 19.5 7.5 9 18l-3.6.6.6-3.6L16.5 4.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span>Edit profile</span></button>
+      <button class="pm-item" id="umFeedback"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 6.5C4 5.12 5.12 4 6.5 4h11C18.88 4 20 5.12 20 6.5v7c0 1.38-1.12 2.5-2.5 2.5H10l-3.6 3a1 1 0 0 1-1.65-.77V6.5Z" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v3.5M12 13.2h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Send feedback</span></button>
       <button class="pm-item" id="umSettings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.5v2M12 18.5v2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M3.5 12h2M18.5 12h2M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Settings</span></button>
       <div class="pm-sep"></div>
       <button class="pm-item danger" id="umLogout"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M16 17l5-5-5-5M21 12H9M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Log out</span></button>`;
@@ -1035,6 +1141,7 @@
     }));
 
     menu.querySelector('#umEditProfile')?.addEventListener('click', () => { closePops(); CPAccount?.openEditProfile(); });
+    menu.querySelector('#umFeedback')?.addEventListener('click', () => { closePops(); openFeedback(); });
     menu.querySelector('#umSettings')?.addEventListener('click', () => { closePops(); location.href = R.settings || '/settings'; });
     menu.querySelector('#umLogout')?.addEventListener('click', () => {
       closePops();

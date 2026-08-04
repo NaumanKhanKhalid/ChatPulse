@@ -87,6 +87,10 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
+    // Feedback
+    Route::post('/feedback', [\App\Http\Controllers\FeedbackController::class, 'store'])
+        ->name('feedback.store')->middleware('throttle:6,1');
+
     // Presence
     Route::post('/presence/heartbeat', [PresenceController::class, 'heartbeat'])->name('presence.heartbeat');
 
@@ -149,6 +153,9 @@ Route::middleware(['auth', 'banned.user'])->group(function () {
         Route::get('/conversations', [\App\Http\Controllers\Admin\ConversationController::class, 'index'])->name('conversations');
         Route::get('/conversations/{conversation}', [\App\Http\Controllers\Admin\ConversationController::class, 'show'])->name('conversations.show');
         Route::delete('/conversations/{conversation}', [\App\Http\Controllers\Admin\ConversationController::class, 'destroy'])->name('conversations.destroy');
+        Route::get('/feedback', [\App\Http\Controllers\Admin\FeedbackController::class, 'index'])->name('feedback');
+        Route::patch('/feedback/{feedback}', [\App\Http\Controllers\Admin\FeedbackController::class, 'update'])->name('feedback.update');
+        Route::delete('/feedback/{feedback}', [\App\Http\Controllers\Admin\FeedbackController::class, 'destroy'])->name('feedback.destroy');
         Route::get('/reports', [\App\Http\Controllers\Admin\ReportController::class, 'index'])->name('reports');
         Route::post('/reports/{report}/dismiss', [\App\Http\Controllers\Admin\ReportController::class, 'dismiss'])->name('reports.dismiss');
         Route::post('/reports/{report}/ban', [\App\Http\Controllers\Admin\ReportController::class, 'banUser'])->name('reports.ban');
