@@ -59,7 +59,15 @@
             </a>
 
             <span class="adm-nav-lbl">Safety</span>
-            @php $openReports = \App\Models\Report::where('status','open')->count(); @endphp
+            @php
+                $openReports  = \App\Models\Report::where('status','open')->count();
+                $openFeedback = \App\Models\Feedback::where('status','open')->count();
+            @endphp
+            <a href="{{ route('admin.feedback') }}" class="adm-nav-item {{ request()->routeIs('admin.feedback*') ? 'on' : '' }}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 6.5C4 5.12 5.12 4 6.5 4h11C18.88 4 20 5.12 20 6.5v7c0 1.38-1.12 2.5-2.5 2.5H10l-3.6 3a1 1 0 0 1-1.65-.77V6.5Z" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5v3.5M12 13.2h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                <span>Feedback</span>
+                @if($openFeedback > 0)<em class="adm-nav-badge">{{ $openFeedback }}</em>@endif
+            </a>
             <a href="{{ route('admin.reports') }}" class="adm-nav-item {{ request()->routeIs('admin.reports*') ? 'on' : '' }}">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 3 3 19h18L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 10v3.5M12 16.5h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
                 <span>Reports</span>
@@ -152,6 +160,7 @@
         ['Messages',      '{{ route('admin.messages') }}',     'moderate content'],
         ['Groups',        '{{ route('admin.groups') }}',       'channels'],
         ['Reports',       '{{ route('admin.reports') }}',      'abuse spam flags'],
+        ['Feedback',      '{{ route('admin.feedback') }}',     'bugs suggestions support users'],
         ['Security Log',  '{{ route('admin.security-log') }}', 'logins failed attempts brute force'],
         ['Error Logs',    '{{ route('admin.logs') }}',         'exceptions stack traces'],
         ['Queue Jobs',    '{{ route('admin.jobs') }}',         'failed retry'],

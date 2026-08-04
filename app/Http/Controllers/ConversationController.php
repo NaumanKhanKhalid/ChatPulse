@@ -96,6 +96,7 @@ class ConversationController extends Controller
             'notifFetch'   => route('notifications.fetch'),
             'notifRead'    => url('/notifications/{notif}/read'),
             'notifReadAll' => route('notifications.read-all'),
+            'feedback'     => route('feedback.store'),
             'csrf'         => csrf_token(),
             'iceServers'   => $this->iceServers(),
         ]);
@@ -133,6 +134,7 @@ class ConversationController extends Controller
             'id'       => $u->id,
             'name'     => $u->name,
             'username' => $u->username ?? strtolower(str_replace(' ', '_', $u->name)),
+            'email'    => $u->id === auth()->id() ? $u->email : null,
             'initials' => $initials,
             'grad'     => $grad,
             'status'   => $u->status_type ?? 'available',
